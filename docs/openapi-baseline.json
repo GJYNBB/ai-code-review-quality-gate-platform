@@ -1,0 +1,32 @@
+{
+    "x-baseline-note": "B0-A.15 种子基线（synthetic seed）。原计划由 'mvn spring-boot:run' 启动 API 并执行 'curl http://localhost:8080/v3/api-docs > docs/openapi-baseline.json' 生成；但 B0-A 阶段尚无任何 @RestController（auth / user / project 等业务控制器自 B1+ 起加入），导出结果仅含 Spring Actuator 端点，对 API 契约无意义。因此本基线由人工按 OpenApiConfig 元信息（标题、版本、bearer-auth 安全方案）+ 空 paths 编写。后续每次合并新模块的批次（B1~B4）后，请按以下仪式重新生成：\n  1. mvn -pl acrqg-platform -am spring-boot:run（或 docker compose up -d backend）\n  2. curl -s http://localhost:8080/v3/api-docs | python -m json.tool > docs/openapi-baseline.json\n  3. 提交 docs(openapi): refresh baseline after Bx 集成\nB6-A.9 集成验证任务会以本文件为 oracle 与运行期 /v3/api-docs 进行 diff 校验（R25.2）。",
+    "openapi": "3.0.3",
+    "info": {
+        "title": "AI辅助代码评审与质量门禁平台 API",
+        "version": "v1.0.0",
+        "description": "AI 辅助代码评审与质量门禁平台 RESTful 接口（Spring Boot 3 / Java 17）"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Local dev (api profile)"
+        }
+    ],
+    "security": [
+        {
+            "bearer-auth": []
+        }
+    ],
+    "paths": {},
+    "components": {
+        "securitySchemes": {
+            "bearer-auth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "使用 /api/v1/auth/login 接口签发的 accessToken，置于 Authorization 头：Bearer <token>"
+            }
+        },
+        "schemas": {}
+    }
+}
