@@ -69,3 +69,9 @@ logs/
 *.log
 pgdata/
 redisdata/
+node_modules/
+.staging/
+.tmp-web-bootstrap/
+.vscode/
+*.original
+
