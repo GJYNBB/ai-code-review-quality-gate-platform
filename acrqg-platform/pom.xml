@@ -151,6 +151,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- ===== In-memory cache (Caffeine; version managed by Spring Boot BOM) ===== -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- ===== Observability ===== -->
         <dependency>
             <groupId>net.logstash.logback</groupId>
