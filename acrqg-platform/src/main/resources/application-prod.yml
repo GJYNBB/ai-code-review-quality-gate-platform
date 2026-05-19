@@ -1,0 +1,46 @@
+# ============================================================================
+#  Profile: prod (生产)
+#
+#  约束：
+#    - swagger UI / api-docs 默认对外关闭 (R23.1 仅暴露已认证接口)；
+#    - actuator 仅暴露 health + metrics；
+#    - 日志级别收紧；启用 JSON 日志 (logback-spring.xml 的 prod profile 段，由 B0-A.8 实现)；
+#    - HTTPS 强制：由 design.md §17.4 中的 HttpsRedirectConfig (@Profile("prod"))
+#      在 B0-A 后续任务实现 308 重定向；本配置文件不直接负责。
+#
+#  关联：design.md §17.3 / §17.4，requirements.md R23.1 / R23.6 / R24.6
+# ============================================================================
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      # 生产环境不向匿名调用方泄露组件细节；K8s/Prometheus 通过认证或内网调用获得详情。
+      show-details: never
+
+logging:
+  level:
+    root: WARN
+    com.acrqg: INFO
+    org.springframework: WARN
+
+server:
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+# 生产环境强烈建议：
+#   - 通过外部 nginx 终结 HTTPS，并把 X-Forwarded-Proto/Host 透传给后端
+#     (server.forward-headers-strategy=framework，已在 application.yml 配置)；
+#   - 通过 TOKEN_ENCRYPTION_KEY / JWT_SECRET / DB_PASSWORD 等环境变量注入敏感配置，
+#     不在镜像或 yml 中保留任何明文。

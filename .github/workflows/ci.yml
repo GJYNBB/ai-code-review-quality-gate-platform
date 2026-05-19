@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feat/**", "chore/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-build:
+    name: Backend Build (Maven + JaCoCo)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    defaults:
+      run:
+        working-directory: acrqg-platform
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: quality_gate
+          POSTGRES_USER: acrqg
+          POSTGRES_PASSWORD: acrqg-ci-password
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U acrqg -d quality_gate"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Maven verify (unit + integration tests + JaCoCo)
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/quality_gate
+          DB_USER: acrqg
+          DB_PASSWORD: acrqg-ci-password
+          REDIS_URL: redis://localhost:6379/0
+          TOKEN_ENCRYPTION_KEY: "ci-fixed-32-bytes-token-encryption-key!!"
+          JWT_SECRET: "ci-fixed-32-bytes-jwt-secret-please-change-when-rotated"
+          SPRING_PROFILES_ACTIVE: test
+        run: mvn -B -ntp -DskipITs=false verify
+
+      - name: Upload JaCoCo report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: acrqg-platform/target/site/jacoco/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            acrqg-platform/target/surefire-reports/
+            acrqg-platform/target/failsafe-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  frontend-build:
+    name: Frontend Build (Vite + Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: acrqg-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: acrqg-web/package-lock.json
+
+      - name: Check frontend exists
+        id: check_fe
+        run: |
+          if [ -f package.json ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::warning::acrqg-web/package.json not found yet (B0-B not merged); skipping frontend build."
+          fi
+
+      - name: Install dependencies (npm ci)
+        if: steps.check_fe.outputs.exists == 'true'
+        run: npm ci
+
+      - name: Lint
+        if: steps.check_fe.outputs.exists == 'true'
+        run: npm run lint --if-present
+
+      - name: Build
+        if: steps.check_fe.outputs.exists == 'true'
+        run: npm run build --if-present
+
+      - name: Run unit tests
+        if: steps.check_fe.outputs.exists == 'true'
+        run: |
+          if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['test:unit'] ? 0 : 1)"; then
+            npm run test:unit -- --run
+          else
+            echo "::warning::test:unit script not defined yet; skipping."
+          fi
+
+  e2e:
+    name: E2E Smoke (placeholder)
+    runs-on: ubuntu-latest
+    needs: [backend-build, frontend-build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Docker Compose v2
+        run: docker compose version
+
+      - name: E2E placeholder
+        run: echo "::notice::E2E placeholder — implemented in B6-A.12"
