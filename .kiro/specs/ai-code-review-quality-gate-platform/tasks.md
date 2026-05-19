@@ -55,25 +55,25 @@
 
 ### B0 — 基础设施 Bootstrap（Integration Node IT-1）
 
-- [ ] B0-A 后端基础设施 Bootstrap
+- [x] B0-A 后端基础设施 Bootstrap
   - _Branch: chore/infra-bootstrap_
   - _Depends: —_
   - _Integration Node: IT-1_
 
-  - [ ] B0-A.1 创建 Maven 单模块骨架与 `pom.xml`
+  - [x] B0-A.1 创建 Maven 单模块骨架与 `pom.xml`
     - 在 `acrqg-platform/` 下生成 Maven 单模块骨架，`groupId=com.acrqg`、`artifactId=acrqg-platform`、`java.version=17`、`spring-boot.version=3.x`
     - 在 `<dependencies>` 中加入 `spring-boot-starter-web`、`spring-boot-starter-validation`、`spring-boot-starter-security`、`spring-boot-starter-data-redis`、`spring-boot-starter-actuator`、`mybatis-plus-spring-boot3-starter`、`postgresql`、`flyway-core`、`flyway-database-postgresql`、`jjwt-api/impl/jackson`、`logstash-logback-encoder`、`micrometer-registry-prometheus`、`springdoc-openapi-starter-webmvc-ui`
     - 在 `<dependencyManagement>` 锁定版本；插件 `spring-boot-maven-plugin`、`jacoco-maven-plugin`（执行点 `prepare-agent` + `report`）
     - 输出物：`acrqg-platform/pom.xml`
     - _Requirements: R24.1, R25.1_
 
-  - [ ] B0-A.2 创建启动类与 Profile 划分
+  - [x] B0-A.2 创建启动类与 Profile 划分
     - 创建 `com.acrqg.platform.AcrqgApplication` 启动类，开启 `@SpringBootApplication(scanBasePackages="com.acrqg.platform")`、`@EnableScheduling`、`@EnableAspectJAutoProxy`
     - 配置 `application.yml`（公共段：日志、Actuator、`management.endpoints.web.exposure.include=health,metrics`）；`application-dev.yml`、`application-test.yml`、`application-prod.yml`、`application-api.yml`、`application-worker.yml`
     - `prod` profile 关闭 swagger UI 默认对外；`worker` profile 不注册 web 控制器（仅 health/metrics）
     - _Requirements: R17.3（语义已对齐 design §17.3）, R24.6_
 
-  - [ ] B0-A.3 实现 `common` 包：响应包装与错误码
+  - [x] B0-A.3 实现 `common` 包：响应包装与错误码
     - `common/api/ApiResponse.java`（record，code/message/data/details/requestId，含 `success`/`failure` 静态工厂）
     - `common/api/PageResult.java`（含 `of(items,page,pageSize,total)` 静态工厂）
     - `common/api/FieldError.java`
@@ -82,7 +82,7 @@
     - `common/util/{IdGenerator,MaskUtils,JsonUtils}.java`
     - _Requirements: R23.3（掩码工具）, 全局错误码（R1~R22 引用）_
 
-  - [ ] B0-A.4 实现 `infra/security`：JWT 与 Spring Security 配置
+  - [x] B0-A.4 实现 `infra/security`：JWT 与 Spring Security 配置
     - `infra/security/JwtTokenProvider.java`：`issue(userId,username,roles)`/`parse(token)`/`toAuthentication(claims)`；HS256，`jti` 使用 UUID
     - `infra/security/JwtAuthFilter.java`：`OncePerRequestFilter`；白名单 `/api/v1/auth/login`、`/api/v1/auth/refresh`、`/api/v1/webhooks/**`、`/health`、`/metrics`、`/v3/api-docs/**`、`/swagger-ui/**`；缺失 / 无效 token 返回 401 ApiResponse
     - `infra/security/SecurityConfig.java`：禁用 CSRF（API 服务）、关闭默认表单登录、注册 `JwtAuthFilter` 在 `UsernamePasswordAuthenticationFilter` 之前
@@ -90,60 +90,60 @@
     - 在 `application.yml` 暴露 `jwt.secret`、`jwt.access.ttl`、`jwt.refresh.ttl` 占位
     - _Requirements: R1.4, R23.1_
 
-  - [ ] B0-A.5 实现 `infra/crypto`：AES-GCM 加密器
+  - [x] B0-A.5 实现 `infra/crypto`：AES-GCM 加密器
     - `infra/crypto/AesGcmCipher.java`：12 字节 IV + 128bit Tag，PBKDF2 派生 256bit 密钥，base64(IV||CipherText) 输出
     - `infra/crypto/TokenEncryptor.java`：薄包装，提供 `encrypt(String)`/`decrypt(String)` 接口，`tokenEncryptionKey` 从 `application.yml` 读取
     - 输出物：上述类 + 必要单元测试占位（在 B1 各模块按需补全）
     - _Requirements: R5.3, R5.4, R21.1, R23.2_
 
-  - [ ] B0-A.6 实现 `infra/redis`：Redis 配置、Stream Publisher、幂等 Store、JWT 黑名单（占位）
+  - [x] B0-A.6 实现 `infra/redis`：Redis 配置、Stream Publisher、幂等 Store、JWT 黑名单（占位）
     - `infra/config/RedisConfig.java`：`RedisTemplate<String,String>`、`StringRedisTemplate`、`RedissonClient`（可选）
     - `infra/redis/RedisStreamPublisher.java`：`enqueue(streamKey, fields)`，封装 `XADD`
     - `infra/redis/IdempotencyStore.java`：`putIfAbsent(key, ttl)`/`get(key)`，TTL 默认 24h
     - `infra/redis/JwtBlacklist.java`：`add(userId, jti, ttl)`/`contains(jti)`/`removeUser(userId)`；底层使用 `SET jwt:bl:jti:{jti} 1 EX {ttl}`，并在 `Set jwt:bl:user:{userId}` 中记录该用户的所有 jti（用于禁用用户时一次性清空）
     - _Requirements: R3.2, R7.4, R8.4_
 
-  - [ ] B0-A.7 实现 `infra/permission`：权限注解与 AOP 切面
+  - [x] B0-A.7 实现 `infra/permission`：权限注解与 AOP 切面
     - `infra/permission/RequirePermission.java`（注解：role[], projectMember, projectIdParam, projectRole[]）
     - `infra/permission/PermissionAspect.java`：`@Before("@annotation(rp)")` 校验全局角色 / 项目成员 / 项目角色，未通过抛 `AccessDeniedException`
     - `infra/permission/PermissionEvaluator.java`：声明 `hasAnyRole`、`isProjectMember`、`hasProjectRole`，实现暂占位（B1-C 实现 isProjectMember / hasProjectRole）
     - `infra/permission/ParamResolver.java`：基于 `JoinPoint` + `@PathVariable` / `@RequestParam` 解析 Long 入参
     - _Requirements: R2.1, R2.2, R2.3, R2.4, R2.5_
 
-  - [ ] B0-A.8 实现 `infra/log`：TraceId 与 JSON 日志
+  - [x] B0-A.8 实现 `infra/log`：TraceId 与 JSON 日志
     - `infra/log/TraceIdFilter.java`：`OncePerRequestFilter`，从 `X-Request-Id` 取或生成 UUID，写入 MDC（`traceId`），并写入 `ApiResponse.requestId`
     - `infra/log/MaskingLogbackEncoder.java`：扩展 `LogstashEncoder`，对 message 中匹配 `password|token|api[_-]?key|secret` 的 key/value 与 Token 正则替换为 `****`
     - `logback-spring.xml`：JSON 输出，包含 traceId、taskNo、userId、level、logger、stack_trace
     - _Requirements: R23.3, R24.5_
 
-  - [ ] B0-A.9 实现 `infra/web`：CORS / 响应掩码切面 / OpenAPI / MyBatis-Plus
+  - [x] B0-A.9 实现 `infra/web`：CORS / 响应掩码切面 / OpenAPI / MyBatis-Plus
     - `infra/config/WebMvcConfig.java`：CORS 白名单（dev 全放开，prod 来源由 `app.cors.allowed-origins` 控制）
     - `infra/log/ResponseMaskingAspect.java`：`@AfterReturning("execution(* com.acrqg.platform..controller..*(..))")`，对返回对象递归掩码 `password / passwordHash / accessToken / apiKey / webhookSecret / accessTokenEncrypted / apiKeyEncrypted` 字段
     - `infra/config/OpenApiConfig.java`：springdoc Bearer 安全方案；`io.swagger.v3.oas.models.info.Info` 设置版本与标题
     - `infra/config/MyBatisPlusConfig.java`：分页插件 + 乐观锁插件 + 字段填充 `created_at` / `updated_at`
     - _Requirements: R23.3_
 
-  - [ ] B0-A.10 编写 Flyway `V1__init.sql`（初始化 user/role/user_role/audit_log + 触发器）
+  - [x] B0-A.10 编写 Flyway `V1__init.sql`（初始化 user/role/user_role/audit_log + 触发器）
     - 严格按 design.md §7.2 的 DDL 创建：`"user"`、`role`、`user_role`、`audit_log`、`reject_audit_modify` 函数 + `trg_audit_no_update` / `trg_audit_no_delete` 触发器、`touch_updated_at` 函数 + `"user"` 的 updated_at 触发器
     - 在 `role` 表中插入 5 条种子角色：`DEVELOPER`、`REVIEWER`、`PROJECT_ADMIN`、`SYSTEM_ADMIN`、`CI_CD`
     - 创建初始 SYSTEM_ADMIN 用户（`admin` / `admin@local`，`password_hash` 通过 BCrypt 离线生成的字面量），并写入 user_role 关联
     - 输出物：`src/main/resources/db/migration/V1__init.sql`
     - _Requirements: R1.6, R2, R22.4, R23.3_
 
-  - [ ] B0-A.11 编写 Dockerfile 与 docker-compose.yml
+  - [x] B0-A.11 编写 Dockerfile 与 docker-compose.yml
     - `acrqg-platform/Dockerfile`：基于 `eclipse-temurin:17-jre`，多阶段构建（builder 用 `eclipse-temurin:17-jdk` + `mvn package`），暴露 8080，入口 `java -jar` 通过 `SPRING_PROFILES_ACTIVE` 切换 api / worker
     - `docker-compose.yml`：4 个服务（postgres:15、redis:7、backend、worker）+ 1 个 frontend 占位（nginx）；含 healthcheck、volumes、env vars（按 design.md §17.1）
     - 输出物：`acrqg-platform/Dockerfile`、`docker-compose.yml`、`.env.example`
     - _Requirements: R24.6_
 
-  - [ ] B0-A.12 编写 GitHub Actions CI 流水线模板
+  - [x] B0-A.12 编写 GitHub Actions CI 流水线模板
     - `.github/workflows/ci.yml`：3 个 job
       - `backend-build`：checkout → setup-java 17 → `mvn -B -DskipITs=false verify`（启动 postgres/redis service container）→ 上传 JaCoCo 报告 → 校验语句覆盖率 ≥ 70%（`jacoco-maven-plugin` 的 `check` goal）
       - `frontend-build`：setup-node 20 → `npm ci` → `npm run lint` → `npm run build` → `npm run test:unit -- --run`
       - `e2e`：`docker compose up -d` → 等待健康 → 运行 k6 / 集成 smoke（在 B6 实现具体脚本，此处仅占位 echo）
     - _Requirements: R25.1, R25.2_
 
-  - [ ] B0-A.13 实现 `/health` 与 `/metrics` 自定义指标骨架
+  - [x] B0-A.13 实现 `/health` 与 `/metrics` 自定义指标骨架
     - 启用 Spring Actuator 的 `/health`、`/metrics`（Prometheus）
     - 添加 `RedisStreamHealthIndicator`（`PING` + `XLEN review-task-stream`）、`AiServiceHealthIndicator`（占位，返回 UNKNOWN，待 B3-E 实现）
     - 注册 Micrometer 指标占位：`acrqg_jwt_blacklist_size` Gauge（值由 B1-A 注入）
@@ -155,49 +155,49 @@
     - `JwtBlacklistTest`：add → contains 命中；TTL 内一致；TTL 过期不命中
     - _Requirements: R23.2, R23.3_
 
-  - [ ] B0-A.15 撰写 OpenAPI 规约 baseline 与 CHANGELOG
+  - [x] B0-A.15 撰写 OpenAPI 规约 baseline 与 CHANGELOG
     - 启动应用一次，导出 `/v3/api-docs` 到 `docs/openapi-baseline.json` 作为基线
     - 创建 `CHANGELOG.md`，记录 B0-A 交付内容
     - 创建 `docs/architecture.md`（链接到 `design.md`）作为团队入口
     - _Requirements: R25.2_
 
-- [ ] B0-B 前端基础设施 Bootstrap
+- [x] B0-B 前端基础设施 Bootstrap
   - _Branch: chore/web-bootstrap_
   - _Depends: —_
   - _Integration Node: IT-1_
 
-  - [ ] B0-B.1 创建 Vue 3 + Vite + TypeScript 项目骨架
+  - [x] B0-B.1 创建 Vue 3 + Vite + TypeScript 项目骨架
     - 在 `acrqg-web/` 下使用 `npm create vite@latest -- --template vue-ts` 生成骨架；锁定 `vue@3.4+`、`vite@5+`、`typescript@5+`
     - 安装依赖：`element-plus`、`@element-plus/icons-vue`、`pinia`、`vue-router@4`、`axios`、`dayjs`、`echarts`、`vue-echarts`
     - 安装开发依赖：`vitest`、`@vue/test-utils`、`jsdom`、`eslint`、`@typescript-eslint/*`、`prettier`
     - 配置 `tsconfig.json`、`vite.config.ts`（`server.proxy` 把 `/api` 反代到 `http://localhost:8080`）
     - _Requirements: R23.6（前端无业务，需要前端骨架支持后续 R1~R21）_
 
-  - [ ] B0-B.2 实现 `src/api/http.ts` axios 拦截器
+  - [x] B0-B.2 实现 `src/api/http.ts` axios 拦截器
     - `request` 拦截器：从 Pinia auth store 注入 `Authorization: Bearer <accessToken>` + `X-Request-Id`
     - `response` 拦截器：成功（`code===0`）解包返回 `data`；失败按错误码统一弹 `ElMessage`；遇到 `AUTH_INVALID_TOKEN` 自动调用 `/auth/refresh` 一次重放（refresh 失败则跳登录）
     - 错误码到提示的中文映射表
     - _Requirements: R1.4, R1.5, R23.3_
 
-  - [ ] B0-B.3 创建布局组件 `DefaultLayout.vue` 与 `BlankLayout.vue`
+  - [x] B0-B.3 创建布局组件 `DefaultLayout.vue` 与 `BlankLayout.vue`
     - `DefaultLayout`：`el-container` 顶部 header（项目切换器 + 用户菜单 + 未读通知红点）+ 左侧 menu（按角色显示）+ 主内容区
     - `BlankLayout`：仅居中卡片（用于登录页）
     - 输出物：两个组件 + 全局样式（`src/styles/index.scss`）
     - _Requirements: R2_
 
-  - [ ] B0-B.4 配置 Pinia 与全局 stores 占位
+  - [x] B0-B.4 配置 Pinia 与全局 stores 占位
     - `src/stores/index.ts`：`createPinia()` 注册到 `main.ts`
     - `src/stores/auth.ts`：state（user、accessToken、refreshToken、expiresAt、roles）；actions（login、logout、refresh、setUser）；持久化到 `localStorage`
     - `src/stores/notification.ts`：仅 state 占位
     - _Requirements: R1, R19_
 
-  - [ ] B0-B.5 配置 Vue Router 路由表与守卫
+  - [x] B0-B.5 配置 Vue Router 路由表与守卫
     - `src/router/index.ts`：注册 design.md §5.2 全部 15 条路由（部分 page 在 B5 实现，此处先占位 `defineAsyncComponent`），每条路由 `meta.requiredRoles` 与 `meta.public`
     - `src/router/guards.ts`：`beforeEach`（未登录跳 `/login`，角色不足跳 `/forbidden`）
     - `src/pages/forbidden/ForbiddenPage.vue`、`src/pages/notfound/NotFoundPage.vue`
     - _Requirements: R2.1, R2.2, R2.3, R2.4, R2.5_
 
-  - [ ] B0-B.6 创建前端 Dockerfile 与 nginx 配置
+  - [x] B0-B.6 创建前端 Dockerfile 与 nginx 配置
     - 多阶段构建：`node:20` 构建 → `nginx:1.25` serve `/usr/share/nginx/html`
     - `nginx.conf`：HTTPS 占位（生产由外层 nginx 终结），`/api/` 反代到 `http://backend:8080/`
     - _Requirements: R23.6_
@@ -207,7 +207,7 @@
     - `tests/unit/router-guard.spec.ts`：未登录访问受保护路由跳转 `/login`
     - _Requirements: R1.4, R23.1_
 
-  - [ ] B0-B.8 撰写前端 CHANGELOG 与 README
+  - [x] B0-B.8 撰写前端 CHANGELOG 与 README
     - `acrqg-web/README.md`：开发命令、环境变量、目录说明
     - `acrqg-web/CHANGELOG.md`：B0-B 交付内容
     - _Requirements: —（项目工程要求）_
@@ -229,14 +229,14 @@
   - _Depends: B0-A_
   - _Integration Node: IT-2_
 
-  - [ ] B1-A.1 实现 Auth Domain / DTO / Mapper
+  - [-] B1-A.1 实现 Auth Domain / DTO / Mapper
     - `auth/domain/{User,UserRole,Role}.java`（DO，对应 V1 表）
     - `auth/dto/{LoginRequest,LoginResultDTO,RefreshResultDTO,UserDTO}.java`（按 design §8.4 字段与 Bean Validation 注解）
     - `auth/repository/{UserMapper,RoleMapper,UserRoleMapper}.java`（MyBatis-Plus）
     - `auth/repository/mapper/UserMapper.xml`：`selectWithRolesByUsername`、`selectWithRolesById`
     - _Requirements: R1.1, R1.6, R3.4_
 
-  - [ ] B1-A.2 实现 `AuthServiceImpl`：login / logout / refresh / me
+  - [-] B1-A.2 实现 `AuthServiceImpl`：login / logout / refresh / me
     - `login(LoginRequest)`：BCrypt 校验密码；status=DISABLED → 抛 `AUTH_ACCOUNT_DISABLED`；用户名/密码错 → 抛 `AUTH_INVALID_CREDENTIALS`（响应文案不区分两者）；签发 access + refresh，返回 `LoginResultDTO`
     - `logout(String accessToken)`：解析 jti → 加入 Redis 黑名单（TTL = token 剩余有效期）
     - `refresh(String refreshToken)`：校验 refreshToken 未撤销 → 签发新 accessToken
@@ -244,19 +244,19 @@
     - 写审计日志（`登录成功`、`登出`），通过 `ApplicationEventPublisher` 发布 `AuditEvent`
     - _Requirements: R1.1, R1.2, R1.3, R1.4, R1.5, R1.6_
 
-  - [ ] B1-A.3 实现 `AuthController`
+  - [-] B1-A.3 实现 `AuthController`
     - `POST /api/v1/auth/login`（公开）、`POST /api/v1/auth/logout`（已登录）、`POST /api/v1/auth/refresh`（公开）、`GET /api/v1/auth/me`（已登录）
     - 全部使用 `ApiResponse<T>` 包装，登录失败按 `ErrorCode.httpStatus()` 返回 401
     - _Requirements: R1.1, R1.2, R1.3, R1.4, R1.5, R23.1_
 
-  - [ ] B1-A.4 实现 `UserService` 与 `UserController`
+  - [-] B1-A.4 实现 `UserService` 与 `UserController`
     - `UserService.page(UserQuery)`：keyword 模糊匹配 username/email；status / role 精确过滤；分页排序
     - `UserService.changeStatus(id, status)`：当 status 切到 DISABLED 时，立即将该用户所有 jti 加入黑名单，撤销其 refreshToken；写审计
     - `UserService.create(UserCreateRequest)`：username / email 唯一校验；BCrypt 哈希
     - `UserController`：`GET /api/v1/users`、`POST /api/v1/users`、`PATCH /api/v1/users/{id}/status`，全部 `@RequirePermission(role=SYSTEM_ADMIN)`
     - _Requirements: R3.1, R3.2, R3.3, R3.4_
 
-  - [ ] B1-A.5 实现 `PermissionEvaluator.hasAnyRole` 完整逻辑
+  - [-] B1-A.5 实现 `PermissionEvaluator.hasAnyRole` 完整逻辑
     - 在 B0-A 占位基础上，从当前用户的 roles 列表与传入 Role[] 求交集；缺失 jwt claims 中的 roles 时回库查询并缓存到 ThreadLocal
     - _Requirements: R2.1_
 
@@ -277,29 +277,29 @@
     - _Property: P6_
     - _Requirements: R3.2_
 
-- [ ] B1-B 审计日志（M01）
+- [x] B1-B 审计日志（M01）
   - _Branch: feat/m01-audit_
   - _Depends: B0-A_
   - _Integration Node: IT-2_
 
-  - [ ] B1-B.1 实现 Audit Domain / DTO / Event
+  - [x] B1-B.1 实现 Audit Domain / DTO / Event
     - `audit/domain/AuditLog.java`、`audit/dto/{AuditLogDTO,AuditQuery}.java`
     - `audit/event/AuditEvent.java`（含 operatorId、operatorUsername、action、resourceType、resourceId、ip、detail）
     - `audit/repository/AuditLogMapper.java`（仅 INSERT 与 SELECT；不暴露 update/delete 方法）
     - _Requirements: R22.1, R22.3_
 
-  - [ ] B1-B.2 实现 `AuditService` 与 ApplicationListener
+  - [x] B1-B.2 实现 `AuditService` 与 ApplicationListener
     - `AuditService.record(AuditEvent)`：异步写入 audit_log（`@Async` + 自定义线程池）；写入前对 detail 进行掩码（password、accessToken、apiKey、webhookSecret 替换 `****`）
     - `AuditService.page(AuditQuery)`：按 operator、action、起止时间分页
     - `audit/event/AuditEventListener.java`：`@EventListener` 接收 AuditEvent → record
     - _Requirements: R22.1, R22.3, R22.5_
 
-  - [ ] B1-B.3 实现 `AuditController`（仅 SYSTEM_ADMIN）
+  - [x] B1-B.3 实现 `AuditController`（仅 SYSTEM_ADMIN）
     - `GET /api/v1/admin/audit-logs`（实际归属 admin URL 域，控制器位于 audit 模块）
     - `@RequirePermission(role=SYSTEM_ADMIN)`
     - _Requirements: R22.2, R22.4（仅 SYSTEM_ADMIN 可查询）_
 
-  - [ ] B1-B.4 编写 Flyway Migration `V10__m01_audit_seed.sql`（如需）
+  - [x] B1-B.4 编写 Flyway Migration `V10__m01_audit_seed.sql`（如需）
     - 仅插入种子数据（无新增表，因 V1 已建 audit_log）；记录 audit_log 的种子操作（`PLATFORM_INIT`）；如无种子需求则该文件可跳过并空提交注释
     - _Requirements: R22.3_
 
@@ -322,38 +322,38 @@
   - _Depends: B0-A, B1-A（仅依赖 user 表，可与 B1-A 并行；合并顺序在 B1-A 后）_
   - _Integration Node: IT-2_
 
-  - [ ] B1-C.1 编写 Flyway Migration `V11__m02_project.sql`
+  - [~] B1-C.1 编写 Flyway Migration `V11__m02_project.sql`
     - `project`、`project_member` 表完整 DDL + 索引（按 design §7.2）
     - `project` 的 `updated_at` 触发器
     - _Requirements: R4.1, R4.2, R6.1_
 
-  - [ ] B1-C.2 实现 Project Domain / DTO / Mapper
+  - [~] B1-C.2 实现 Project Domain / DTO / Mapper
     - `project/domain/{Project,ProjectMember}.java`、`project/dto/{ProjectCreateRequest,ProjectUpdateRequest,ProjectDTO,ProjectQuery,AddMemberRequest}.java`
     - `project/repository/{ProjectMapper,ProjectMemberMapper}.java`，自定义 SQL：`countMembers(projectId)`、`isMember(projectId,userId)`、`roleOf(projectId,userId)`
     - _Requirements: R4.1, R4.3, R6.1_
 
-  - [ ] B1-C.3 实现 `ProjectServiceImpl`
+  - [~] B1-C.3 实现 `ProjectServiceImpl`
     - `create`：name 唯一检查（捕获唯一约束冲突 → `PROJECT_NAME_EXISTS`）；language 校验枚举；创建后自动把创建者加入 project_member（PROJECT_ADMIN 角色）
     - `update`：校验调用者为该项目 PROJECT_ADMIN
     - `page` / `get`：支持关键字模糊；返回 memberCount
     - 通过 `ApplicationEventPublisher` 发布 AuditEvent（`PROJECT_CREATED`、`PROJECT_UPDATED`）
     - _Requirements: R4.1, R4.2, R4.3, R4.4, R4.5_
 
-  - [ ] B1-C.4 实现项目成员管理（addMember / removeMember / list）
+  - [~] B1-C.4 实现项目成员管理（addMember / removeMember / list）
     - `addMember`：校验 userId 存在且 status=ENABLED，否则 `VALIDATION_ERROR`；唯一约束冲突按 `VALIDATION_ERROR` 返回
     - `removeMember`：仅删除 project_member 行，不删全局用户
     - `listMembers`
     - 移除后立即由 `PermissionAspect` 拒绝该用户对该项目的非公开访问（无需额外缓存清理，因 Aspect 每次请求实时查 isMember）
     - _Requirements: R6.1, R6.2, R6.3, R6.4_
 
-  - [ ] B1-C.5 实现 `ProjectController`
+  - [~] B1-C.5 实现 `ProjectController`
     - `POST /api/v1/projects`：`@RequirePermission(role={PROJECT_ADMIN,SYSTEM_ADMIN})`
     - `GET /api/v1/projects`、`GET /api/v1/projects/{id}`、`PUT /api/v1/projects/{id}`：按权限注解配置
     - `POST /api/v1/projects/{id}/members`、`DELETE /api/v1/projects/{id}/members/{userId}`、`GET /api/v1/projects/{id}/members`
     - 全部启用 Bean Validation
     - _Requirements: R4, R6, R23.1_
 
-  - [ ] B1-C.6 完善 `PermissionEvaluator.isProjectMember` 与 `hasProjectRole`
+  - [~] B1-C.6 完善 `PermissionEvaluator.isProjectMember` 与 `hasProjectRole`
     - 通过 `ProjectMemberMapper` 实现实时查询；为减少 DB 压力，使用 Caffeine 缓存（key=`{userId}:{projectId}`，TTL=60s）
     - 当 `removeMember` 时清理对应缓存项
     - _Requirements: R2, R6.4_
@@ -371,18 +371,18 @@
   - _Depends: B0-A, B1-B（审计 event 监听，可与 B1-B 并行；合并顺序在 B1-B 后）_
   - _Integration Node: IT-2_
 
-  - [ ] B1-D.1 编写 Flyway Migration `V12__m10_admin.sql`
+  - [~] B1-D.1 编写 Flyway Migration `V12__m10_admin.sql`
     - `model_config`、`scanner_config`、`system_param` 表（按 design §7.2）
     - 种子数据：4 条 scanner_config（checkstyle / eslint / pylint / semgrep，含 command 模板与 result_parser_type）；`system_param` 默认值：`review.worker.concurrency=4`、`ai.review.timeout.seconds=60`、`diff.maxLinesPerFile=5000`、`gate.score.formula.weight.default=1.0`、`tokenEncryptionKey`（占位，从环境变量装载，DB 不存明文）
     - _Requirements: R21.1, R21.3, R21.4_
 
-  - [ ] B1-D.2 实现 Admin Domain / DTO / Mapper
+  - [~] B1-D.2 实现 Admin Domain / DTO / Mapper
     - `admin/domain/{ModelConfig,ScannerConfig,SystemParam}.java`
     - `admin/dto/{ModelConfigCreateRequest,ModelConfigDTO,ScannerConfigRequest,ScannerConfigDTO,SystemParamDTO,SystemParamUpdateRequest}.java`
     - `admin/repository/{ModelConfigMapper,ScannerConfigMapper,SystemParamMapper}.java`
     - _Requirements: R21.1, R21.3, R21.4_
 
-  - [ ] B1-D.3 实现 `AdminService`：模型管理
+  - [~] B1-D.3 实现 `AdminService`：模型管理
     - `createModel`：apiKey 经 `TokenEncryptor.encrypt` 后存储；返回 DTO 中 `apiKeyMasked="****"`
     - `listModels` / `getModel`：apiKey 始终掩码
     - `updateModel` / `enableDisableModel`
@@ -390,13 +390,13 @@
     - 提供内部接口 `decryptModelApiKey(modelId)`（仅供 B3-E AI 客户端使用）
     - _Requirements: R21.1, R21.2, R21.5, R23.2_
 
-  - [ ] B1-D.4 实现 `AdminService`：扫描器管理
+  - [~] B1-D.4 实现 `AdminService`：扫描器管理
     - `upsertScanner(name, language, enabled, command, resultParserType)`：command 为模板字符串，含 `{workdir}`、`{file}` 占位；name 唯一
     - `listScanners` / `getScanner`
     - 写审计：`SCANNER_CONFIG_UPSERTED`
     - _Requirements: R21.3_
 
-  - [ ] B1-D.5 实现 `AdminService`：系统参数管理
+  - [~] B1-D.5 实现 `AdminService`：系统参数管理
     - `getParam(key)` / `listParams(prefix)`
     - `updateParam(key, value)`：按 key 类型校验：`review.worker.concurrency` ∈ [1,32]、`ai.review.timeout.seconds` ∈ [10,300]、`diff.maxLinesPerFile` ∈ [100,50000]；越界抛 `VALIDATION_ERROR`
     - 敏感参数（sensitive=true）存储前加密、查询时掩码
@@ -404,7 +404,7 @@
     - 通过 Redis pub/sub 发布 `param-changed:{key}` 事件，供 Worker 在 60s 内热更新（R24.3）
     - _Requirements: R21.4, R21.5, R22.1, R24.3_
 
-  - [ ] B1-D.6 实现 `AdminController`
+  - [~] B1-D.6 实现 `AdminController`
     - `GET/POST /api/v1/admin/model-configs`、`PATCH /api/v1/admin/model-configs/{id}`
     - `GET /api/v1/admin/scanners`、`POST /api/v1/admin/scanners`
     - `GET /api/v1/admin/system-params`、`PATCH /api/v1/admin/system-params/{key}`
@@ -446,24 +446,24 @@
   - _Depends: B1-C, B1-D_
   - _Integration Node: IT-3_
 
-  - [ ] B2-A.1 编写 Flyway Migration `V20__m02_repository.sql`
+  - [~] B2-A.1 编写 Flyway Migration `V20__m02_repository.sql`
     - `repository_binding` 表完整 DDL + uk_repository_binding_project + updated_at 触发器
     - _Requirements: R5.6_
 
-  - [ ] B2-A.2 实现 Repository Domain / DTO / Mapper
+  - [~] B2-A.2 实现 Repository Domain / DTO / Mapper
     - `repository/domain/RepositoryBinding.java`
     - `repository/dto/{RepositoryTestRequest,RepositoryBindRequest,RepositoryBindingDTO,ConnectivityResultDTO}.java`（按 design §8.4，accessToken / webhookSecret 标 `@NotBlank @Size`）
     - `repository/repository/RepositoryBindingMapper.java`
     - _Requirements: R5.1, R5.2, R5.3, R5.4_
 
-  - [ ] B2-A.3 实现 ProviderClient 抽象与三实现（GITHUB / GITLAB / GITEE）
+  - [~] B2-A.3 实现 ProviderClient 抽象与三实现（GITHUB / GITLAB / GITEE）
     - `repository/client/ProviderClient.java`：`name()`、`ping(RepositoryTestRequest)`、`fetchDiff(DiffFetchRequest)`、`postCommitStatus(CommitStatusRequest)` 接口
     - 三实现：`GithubClient`、`GitlabClient`、`GiteeClient`，使用 Spring `RestClient`，超时 10s
     - `repository/client/ProviderClientFactory.java`：根据 provider 字符串返回对应 client
     - 在 B2-A 阶段仅实现 `ping`；`fetchDiff` 与 `postCommitStatus` 留接口，供 B3-C 与 B4-E 实现
     - _Requirements: R5.1, R5.2, R10.1, R20.1_
 
-  - [ ] B2-A.4 实现 `RepositoryServiceImpl`
+  - [~] B2-A.4 实现 `RepositoryServiceImpl`
     - `test`：调用对应 ProviderClient.ping，返回 reachable + message；不持久化
     - `bind`：先 ping 通 → 加密 accessToken / webhookSecret → 生成 webhookUrl（`https://{host}/api/v1/webhooks/git`）→ 写库；ping 失败抛 `REPOSITORY_UNREACHABLE`
     - `get`：返回 RepositoryBindingDTO（不含密文字段）
@@ -471,7 +471,7 @@
     - 写审计：`REPOSITORY_BOUND`、`REPOSITORY_UPDATED`（accessToken 字段掩码）
     - _Requirements: R5.1, R5.2, R5.3, R5.4, R5.5, R5.6, R23.2, R23.3_
 
-  - [ ] B2-A.5 实现 `RepositoryController`
+  - [~] B2-A.5 实现 `RepositoryController`
     - `POST /api/v1/projects/{id}/repository/test`、`POST /api/v1/projects/{id}/repository`、`GET /api/v1/projects/{id}/repository`
     - 写接口：`@RequirePermission(projectMember=true, projectRole=PROJECT_ADMIN)`
     - 读接口：`@RequirePermission(projectMember=true)`
@@ -491,18 +491,18 @@
   - _Depends: B1-C_
   - _Integration Node: IT-3_
 
-  - [ ] B2-B.1 编写 Flyway Migration `V21__m07_quality_gate.sql`
+  - [~] B2-B.1 编写 Flyway Migration `V21__m07_quality_gate.sql`
     - `quality_gate`、`gate_rule` 表 + 索引 + `uk_quality_gate_one_enabled` 部分唯一索引（按 design §7.2）
     - 种子模板：在 `quality_gate` 中插入一条系统模板（`enabled=false`、project_id=NULL 不可，因外键，故跳过种子；模板由 service 层 `getDefaultTemplate()` 返回内存对象）
     - _Requirements: R13.1, R13.2, R13.4, R13.5_
 
-  - [ ] B2-B.2 实现 Gate Domain / DTO / Mapper
+  - [~] B2-B.2 实现 Gate Domain / DTO / Mapper
     - `gate/domain/{QualityGate,GateRule}.java`
     - `gate/dto/{GateRuleDTO,QualityGateSaveRequest,QualityGateDTO}.java`，按 design §8.4 配 Bean Validation
     - `gate/repository/{QualityGateMapper,GateRuleMapper}.java`
     - _Requirements: R13.1, R13.2_
 
-  - [ ] B2-B.3 实现 `QualityGateService`：保存、查询、模板
+  - [~] B2-B.3 实现 `QualityGateService`：保存、查询、模板
     - `save(projectId, request)`：校验每条 rule 的 metric / operator / severity 取自合法集合，否则抛 `GATE_RULE_INVALID` 并在 details 指出索引；事务内将旧版本 `enabled=false`，插入新版本 version+1, enabled=true；批量插 gate_rule
     - `getEnabled(projectId)`：返回 enabled=true 的版本与其规则
     - `listVersions(projectId)`、`getVersion(gateId)`
@@ -510,7 +510,7 @@
     - 写审计：`QUALITY_GATE_SAVED`，detail 中含 version
     - _Requirements: R13.1, R13.2, R13.3, R13.4, R13.5, R13.6_
 
-  - [ ] B2-B.4 实现 `QualityGateController`
+  - [~] B2-B.4 实现 `QualityGateController`
     - `POST /api/v1/projects/{id}/quality-gate`：`@RequirePermission(projectRole=PROJECT_ADMIN)`
     - `GET /api/v1/projects/{id}/quality-gate`：`@RequirePermission(projectMember=true)`
     - `GET /api/v1/quality-gates/templates`：已登录可见
@@ -545,23 +545,23 @@
   - _Depends: B2-A_
   - _Integration Node: IT-4_
 
-  - [ ] B3-A.1 编写 Flyway Migration `V30__m03_review_task.sql`
+  - [~] B3-A.1 编写 Flyway Migration `V30__m03_review_task.sql`
     - `review_task`（含 uk_review_task_no、uk_review_task_triple、idx_review_task_status / project_ts / finished_at）、`task_log` 表（按 design §7.2）
     - `review_task` 的 updated_at 触发器
     - _Requirements: R7.4, R8.3, R9.1, R9.7_
 
-  - [ ] B3-A.2 实现 ReviewTask Domain / DTO / Mapper
+  - [~] B3-A.2 实现 ReviewTask Domain / DTO / Mapper
     - `task/domain/{ReviewTask,TaskLog}.java`、`task/dto/{ReviewTaskCreateRequest,ReviewTaskDTO,ReviewTaskQuery,RetryRequest,CancelRequest,TaskLogDTO,TaskLogQuery}.java`
     - `task/repository/{ReviewTaskMapper,TaskLogMapper}.java`，自定义 SQL：`findActiveByTriple`、`updateStatusOnlyIfFrom`（CAS 更新，避免并发覆盖）
     - _Requirements: R7.4, R8.1, R8.2, R8.3, R9.1_
 
-  - [ ] B3-A.3 实现 `ReviewTaskStatus` 枚举与状态机定义
+  - [~] B3-A.3 实现 `ReviewTaskStatus` 枚举与状态机定义
     - `task/domain/ReviewTaskStatus.java`：8 个状态枚举
     - `task/domain/StateMachine.java`：`ALLOWED_EDGES` 集合（按 design §6.3.1 状态图：PENDING→FETCHING_DIFF / EXECUTION_FAILED；FETCHING_DIFF→STATIC_SCANNING / EXECUTION_FAILED；…；PASSED / FAILED_GATE / EXECUTION_FAILED → PENDING via retry）
     - `tryTransit(from, to)`：不在 ALLOWED_EDGES 抛 `BusinessException(VALIDATION_ERROR, "illegal transition")`
     - _Requirements: R9.1, R9.3_
 
-  - [ ] B3-A.4 实现 `ReviewTaskServiceImpl`
+  - [~] B3-A.4 实现 `ReviewTaskServiceImpl`
     - `create(req, idempotencyKey, trigger)`：
       - 若携带 `Idempotency-Key`，先查 Redis `idem:task:{key}` → 命中则返回缓存的 ReviewTaskDTO（R8.4）
       - 否则按 `(projectId, prId, commitSha)` 三元组查 active task → 命中且非 EXECUTION_FAILED 则按调用入口决定：webhook 直接返回（R7.4）/ 手动接口缺 idempotencyKey 抛 `TASK_DUPLICATED`（R8.3）
@@ -575,14 +575,14 @@
     - `transitTo(id, target)`：StateMachine 校验 + CAS 更新（防止并发跳跃）；落库前后同步阶段日志
     - _Requirements: R7.3, R7.4, R7.6, R8.1, R8.2, R8.3, R8.4, R8.5, R9.2, R9.3, R9.4, R9.5, R9.6, R9.7_
 
-  - [ ] B3-A.5 实现 TaskStage 接口与抽象骨架
+  - [~] B3-A.5 实现 TaskStage 接口与抽象骨架
     - `task/worker/TaskStage.java`：`stage()`、`next(StageContext)`、`timeoutSeconds()`
     - `task/worker/StageContext.java`（含 taskId、projectId、attempt、worker 元数据）
     - `task/worker/TaskOrchestrator.java`：从 PENDING 起逐阶段执行，每阶段抛异常 / 超时 → `transitTo(EXECUTION_FAILED)` 并写 task_log（R9.2）；终态写 finishedAt 与 score（score 由 B3-F GateEngine 写入，Orchestrator 读取后回填）
     - 阶段实现类（FetchingDiff / StaticScanning / AiReviewing / GateEvaluating）暂用占位 NOOP 实现，由 B3-C / B3-D / B3-E / B3-F 替换
     - _Requirements: R9.1, R9.2, R9.7, R24.5_
 
-  - [ ] B3-A.6 实现 Redis Stream 消费者 `ReviewTaskConsumer`
+  - [~] B3-A.6 实现 Redis Stream 消费者 `ReviewTaskConsumer`
     - 创建 consumer group `review-worker-group`（启动期 idempotent 创建）
     - `pollAndDispatch`：`XREADGROUP` 阻塞拉取（BLOCK 5000ms，COUNT 等于 `review.worker.concurrency`），分发给线程池
     - `review.worker.concurrency` 通过 Redis pub/sub 监听 `param-changed:review.worker.concurrency` 在 60s 内热更新（R24.3）
@@ -590,19 +590,19 @@
     - 仅在 `worker` profile 下注册 Bean（`@Profile("worker")`）
     - _Requirements: R7.6, R9, R24.3, R24.4_
 
-  - [ ] B3-A.7 实现 `TaskRecoveryRunner` 启动期断点恢复
+  - [~] B3-A.7 实现 `TaskRecoveryRunner` 启动期断点恢复
     - `ApplicationRunner`，仅 worker profile 下生效
     - 扫描所有 status ∈ {FETCHING_DIFF, STATIC_SCANNING, AI_REVIEWING, GATE_EVALUATING} 的任务 → 调 `transitTo(EXECUTION_FAILED)`，写 task_log（design §16.3 策略 A）
     - _Requirements: R24.4_
 
-  - [ ] B3-A.8 实现 `ReviewTaskController`
+  - [~] B3-A.8 实现 `ReviewTaskController`
     - `POST /api/v1/review-tasks`（手动创建，已登录 + 项目成员；CI_CD 角色按 design §8.7 允许）
     - `GET /api/v1/review-tasks`、`GET /api/v1/review-tasks/{id}`、`GET /api/v1/review-tasks/{id}/logs`（`@RequirePermission(projectMember=true)`，service 内按任务 projectId 解析）
     - `POST /api/v1/review-tasks/{id}/retry`、`POST /api/v1/review-tasks/{id}/cancel`
     - 接口需读取 `Idempotency-Key` 头（R8.4）
     - _Requirements: R8, R9, R16.5_
 
-  - [ ] B3-A.9 提供 `TaskLogger` 工具类
+  - [~] B3-A.9 提供 `TaskLogger` 工具类
     - `task/log/TaskLogger.java`：`info(taskId, stage, message)` / `warn(...)` / `error(taskId, stage, message, throwable)`，落 `task_log` 表，并 MDC 自动注入 `taskNo`
     - 暴露 Bean 给 B3-C / B3-D / B3-E / B3-F / B4-* 使用
     - _Requirements: R9.7, R24.5_
@@ -634,7 +634,7 @@
   - _Depends: B3-A_
   - _Integration Node: IT-4_
 
-  - [ ] B3-B.1 实现 Webhook 签名校验器（GitHub / GitLab / Gitee）
+  - [~] B3-B.1 实现 Webhook 签名校验器（GitHub / GitLab / Gitee）
     - `webhook/verifier/SignatureVerifier.java` 接口：`verify(secret, body, headers)`
     - `GithubSignatureVerifier`：`X-Hub-Signature-256`，HMAC-SHA256，使用 `MessageDigest.isEqual` 恒定时间比较
     - `GitlabSignatureVerifier`：`X-Gitlab-Token`（直接相等比较，因 GitLab 用明文 token）
@@ -642,12 +642,12 @@
     - `webhook/verifier/SignatureVerifierFactory.java`
     - _Requirements: R7.1, R7.2, R23.3_
 
-  - [ ] B3-B.2 实现 `WebhookEventParser`
+  - [~] B3-B.2 实现 `WebhookEventParser`
     - 解析 GitHub / GitLab / Gitee 三种 payload，统一抽出：provider、repositoryId、repoUrl、eventId、prId、commitSha、sourceBranch、targetBranch、eventType（`PR_OPENED`、`PR_SYNC`、`PUSH`、`PING`、`OTHER`）
     - 不支持的事件类型返回 `eventType=OTHER` 标记
     - _Requirements: R7.3, R7.5_
 
-  - [ ] B3-B.3 实现 `WebhookServiceImpl`
+  - [~] B3-B.3 实现 `WebhookServiceImpl`
     - `handle(provider, headers, rawBody)`：
       - 解析 repoUrl → 查 RepositoryBinding → 取 webhookSecret 解密 → 调 SignatureVerifier；失败抛 `WEBHOOK_SIGNATURE_INVALID`（R7.2）
       - eventType ∈ {PING, OTHER} 返回 `{ignored:true}`，不创建任务（R7.5）
@@ -657,7 +657,7 @@
     - 整体流程必须在 3s 内返回（R7.6）；耗时操作（实际任务执行）由 Stream 异步消费
     - _Requirements: R7.1, R7.2, R7.3, R7.4, R7.5, R7.6_
 
-  - [ ] B3-B.4 实现 `WebhookController`
+  - [~] B3-B.4 实现 `WebhookController`
     - `POST /api/v1/webhooks/git`：白名单不需 Bearer，但需要校验签名；接收原始 body（`@RequestBody String rawBody`）
     - 通过 `request.getHeader` 取 `X-Hub-Signature-256` 等头；通过查询参数或 path 推断 provider，或在 body 中识别（GitHub 有 `repository.html_url`、GitLab 有 `object_kind` 等）
     - _Requirements: R7.1, R7.6, R23.1_
@@ -675,24 +675,24 @@
   - _Depends: B3-A, B2-A_
   - _Integration Node: IT-4_
 
-  - [ ] B3-C.1 编写 Flyway Migration `V31__m04_diff_file.sql`
+  - [~] B3-C.1 编写 Flyway Migration `V31__m04_diff_file.sql`
     - `diff_file` 表（按 design §7.2，含 uk_diff_file_task_path、idx_diff_file_task）
     - _Requirements: R10.2, R10.3_
 
-  - [ ] B3-C.2 实现 Diff Domain / DTO / Mapper
+  - [~] B3-C.2 实现 Diff Domain / DTO / Mapper
     - `diff/domain/{DiffFile,DiffHunk,ChangeType}.java`
     - `diff/dto/{DiffParseResult,ChangedFile,DiffViewDTO,DiffFetchRequest,DiffPayload}.java`
     - `diff/repository/DiffFileMapper.java`，自定义 SQL：`sumByTask(taskId)`、`changedFilesOf(taskId)`
     - _Requirements: R10.2, R10.3_
 
-  - [ ] B3-C.3 实现 ProviderClient.fetchDiff（在 B2-A.3 留白接口上完成）
+  - [~] B3-C.3 实现 ProviderClient.fetchDiff（在 B2-A.3 留白接口上完成）
     - GithubClient：`GET /repos/{owner}/{repo}/pulls/{prId}/files`（携带 Bearer token，分页拉取，使用 RestClient）
     - GitlabClient：`GET /projects/{id}/merge_requests/{iid}/changes`
     - GiteeClient：`GET /repos/{owner}/{repo}/pulls/{prId}/files`
     - 统一返回 `DiffPayload`（每文件 path、status、patch 文本）；网络错误 → `DiffFetchException`（包含 commitSha、provider）
     - _Requirements: R10.1, R10.4_
 
-  - [ ] B3-C.4 实现 `DiffParserImpl`
+  - [~] B3-C.4 实现 `DiffParserImpl`
     - `parse(taskId)`：
       - 取 task → 取 RepositoryBinding（解密 accessToken）→ 调 `ProviderClient.fetchDiff`
       - 解析 unified diff patch 字符串：每文件抽出 hunks（`@@ -a,b +c,d @@`）→ 计算 addedLines / deletedLines；changeType 由 GitHub `status` 或 patch 头判定
@@ -702,12 +702,12 @@
     - 返回 `DiffParseResult`
     - _Requirements: R10.1, R10.2, R10.3, R10.4, R10.5_
 
-  - [ ] B3-C.5 实现 `FetchingDiffStage`（替换 B3-A.5 的占位）
+  - [~] B3-C.5 实现 `FetchingDiffStage`（替换 B3-A.5 的占位）
     - `stage()=FETCHING_DIFF`，`next()`：调 `DiffParserImpl.parse(taskId)`；成功返回 STATIC_SCANNING；失败抛异常（由 Orchestrator 处理）
     - `timeoutSeconds`：默认 120，可读 `system_param.diff.fetch.timeout.seconds`
     - _Requirements: R9.1, R10_
 
-  - [ ] B3-C.6 提供 `DiffViewService.diffView(taskId)`（供 B4-B Report 使用）
+  - [~] B3-C.6 提供 `DiffViewService.diffView(taskId)`（供 B4-B Report 使用）
     - 返回每个变更文件的 hunks（含 oldStart、newStart、行级 diff）；预留 `markIssueLines` 钩子（在 B4-B 接入）
     - _Requirements: R16.4_
 
@@ -731,38 +731,38 @@
   - _Depends: B3-C, B1-D_
   - _Integration Node: IT-4_
 
-  - [ ] B3-D.1 实现 `StaticScannerAdapter` 接口与 `SeverityMapper`
+  - [~] B3-D.1 实现 `StaticScannerAdapter` 接口与 `SeverityMapper`
     - `scanner/adapter/StaticScannerAdapter.java`：`name()`、`supportedLanguages()`、`isAvailable()`、`scan(ScanContext)`
     - `scanner/adapter/ScanContext.java`（task、changedFiles、workdir、scannerConfig）
     - `scanner/SeverityMapper.java`：按 design §11.2 的映射表把工具原始 severity 归一化为 `CRITICAL/HIGH/MEDIUM/LOW/INFO`；未知 → `INFO` + 打 WARN 日志
     - _Requirements: R11.2, R11.3_
 
-  - [ ] B3-D.2 实现 `ScannerProcessRunner` 与四个扫描器实现
+  - [~] B3-D.2 实现 `ScannerProcessRunner` 与四个扫描器实现
     - `scanner/process/ScannerProcessRunner.java`：基于 `ProcessBuilder` 执行命令，超时 60s，捕获 stdout/stderr；支持 `{workdir}`/`{file}` 占位符替换；可选 docker exec 模式（系统参数 `scanner.runner.mode=docker` 时启用）
     - 四个 Adapter（`scanner/adapter/{CheckstyleScanner,EsLintScanner,PylintScanner,SemgrepScanner}.java`）：从 `scanner_config` 读取 command 模板；调用 ScannerProcessRunner；调用对应 ResultParser 转为 List<CodeIssue>
     - 四个 ResultParser（`scanner/parser/{CheckstyleXmlParser,EsLintJsonParser,PylintJsonParser,SemgrepJsonParser}.java`）：将原始 XML/JSON 反序列化并按 SeverityMapper 归一化
     - `isAvailable`：执行 `--version` 探测；若失败返回 false 并写 INFO 日志（不阻塞其他扫描器）
     - _Requirements: R11.1, R11.2, R11.3, R11.4_
 
-  - [ ] B3-D.3 实现 `ScannerOrchestrator`
+  - [~] B3-D.3 实现 `ScannerOrchestrator`
     - 取 task → project.language → 选择 supportedLanguages 包含 language 的 adapters + Semgrep（通用安全）
     - 仅传入 `diff_file` 中 oversized=false 的变更文件路径（R11.5）
     - `parallelStream()` 调每个 adapter；任一异常 → `taskLogger.warn` 记录后 `Stream.empty()`，不影响其他（R11.4）
     - 批量持久化 CodeIssue（source=SAST、status=NEW），事务一次提交
     - _Requirements: R11.1, R11.2, R11.4, R11.5_
 
-  - [ ] B3-D.4 实现 `code_issue` 表 Migration `V32__m05_code_issue.sql`
+  - [~] B3-D.4 实现 `code_issue` 表 Migration `V32__m05_code_issue.sql`
     - `code_issue`、`issue_history`、`issue_comment` 表 + 全部索引（design §7.2）
     - 注意：与 B4-A 的 issue 模块共享此表；在 B3-D 的 V32 中创建一次，B4-A 不再重复创建（仅追加 service / controller）
     - _Requirements: R11.2, R16.2, R17_
 
-  - [ ] B3-D.5 实现 CodeIssue Domain / DTO / Mapper（共用）
+  - [~] B3-D.5 实现 CodeIssue Domain / DTO / Mapper（共用）
     - `issue/domain/{CodeIssue,IssueHistory,IssueComment}.java`、`issue/dto/{CodeIssueDTO,IssueQuery,IssueStatusChangeRequest,IssueCommentDTO}.java`
     - `issue/repository/{CodeIssueMapper,IssueHistoryMapper,IssueCommentMapper}.java`
     - 提供给 B3-D（写入 SAST 问题）、B3-E（写入 AI 问题）、B3-F（聚合查询）、B4-A（状态流转）共用
     - _Requirements: R11.2, R12.3, R16.2, R17_
 
-  - [ ] B3-D.6 实现 `StaticScanningStage`（替换占位）
+  - [~] B3-D.6 实现 `StaticScanningStage`（替换占位）
     - `stage()=STATIC_SCANNING`，`next()`：调 ScannerOrchestrator.scan；返回 AI_REVIEWING
     - _Requirements: R9.1, R11_
 
@@ -781,7 +781,7 @@
   - _Depends: B3-C, B1-D_
   - _Integration Node: IT-4_
 
-  - [ ] B3-E.1 实现 `SensitiveFilter`
+  - [~] B3-E.1 实现 `SensitiveFilter`
     - `ai/filter/SensitiveFilter.java` 接口：`filter(AiReviewPayload raw)` → `FilteredPayload`
     - `ai/filter/DefaultSensitiveFilter.java`：
       - 路径白名单：`.env`、`*.env.*`、`*.pem`、`*.key`、`*.crt`、`*.p12`、`*.jks`、`secrets/**`、`config/secret-*` 整文件跳过
@@ -790,19 +790,19 @@
     - 工具：`anyHit(raw)`、`hash(payload)`
     - _Requirements: R12.2, R23.4_
 
-  - [ ] B3-E.2 实现 `AiReviewClient` 与 JSON Schema 校验
+  - [~] B3-E.2 实现 `AiReviewClient` 与 JSON Schema 校验
     - `ai/client/AiReviewClient.java`、`ai/client/HttpAiReviewClient.java`：`RestClient` 调用 OpenAI 兼容 `/v1/chat/completions`，超时由 `ai.review.timeout.seconds`（默认 60）控制；4xx 抛 `BusinessException`，5xx / 超时抛 `AiServiceUnavailableException`
     - apiKey 通过 `AdminService.decryptModelApiKey(modelId)` 取得
     - `ai/schema/AiReviewSchemaValidator.java`：使用 `networknt/json-schema-validator`，校验响应符合 design §12.2 schema；不通过 → 抛 `SchemaValidationException`
     - JSON Schema 文件：`src/main/resources/ai/review-response.schema.json`
     - _Requirements: R12.1, R12.3, R12.4, R12.5_
 
-  - [ ] B3-E.3 实现 Prompt 模板与上下文构造
+  - [~] B3-E.3 实现 Prompt 模板与上下文构造
     - `ai/prompt/PromptBuilder.java`：按 design §12.1 模板构造 system + user 两段；注入 language、metrics 列表、fileList、filteredDiff
     - 限制单次 payload ≤ 模型 max_tokens（按系统参数 `ai.review.maxInputChars` 截断）
     - _Requirements: R12.1_
 
-  - [ ] B3-E.4 实现 `AiReviewService.execute(taskId)`（含降级）
+  - [~] B3-E.4 实现 `AiReviewService.execute(taskId)`（含降级）
     - 流程：取 task + diff → 取 enabled model_config → SensitiveFilter.filter → PromptBuilder.build → AiReviewClient.review
     - 异常处理：
       - `SensitiveFilterFailureException` → 中止 AI 调用，写 task_log(ERROR)，gate_result.summary.aiAvailable=false（R12.2）
@@ -812,11 +812,11 @@
     - 计算 ai_risk_score（design §12.5 公式）并写入 `gate_result_summary` 缓存（在 B3-F 实现 gate_result 表，本任务先暂存到 task 元数据 JSONB 或新增 `ai_risk_score` 字段，由 B3-F 在 evaluate 时一并消费；推荐：在 task_log 中写 `score=ai_risk_score` 的结构化条目，B3-F 直接读取最新的）
     - _Requirements: R12.1, R12.2, R12.3, R12.4, R12.5, R12.6_
 
-  - [ ] B3-E.5 实现 `AiReviewingStage`（替换占位）
+  - [~] B3-E.5 实现 `AiReviewingStage`（替换占位）
     - `stage()=AI_REVIEWING`，`next()`：调 `aiReviewService.execute(taskId)`；任一降级路径都返回 `GATE_EVALUATING`（不抛异常）；仅在不可恢复内部错误时抛异常（R12.5）
     - _Requirements: R9.1, R12.5_
 
-  - [ ] B3-E.6 实现 `AiServiceHealthIndicator`（替换 B0-A.13 占位）
+  - [~] B3-E.6 实现 `AiServiceHealthIndicator`（替换 B0-A.13 占位）
     - 周期性（30s）调用 enabled model 的轻量探活 endpoint；缓存结果；`/health` 中暴露 `aiService` 子组件
     - _Requirements: R24.6_
 
@@ -844,17 +844,17 @@
   - _Depends: B3-D, B3-E, B2-B_
   - _Integration Node: IT-4_
 
-  - [ ] B3-F.1 编写 Flyway Migration `V33__m07_gate_result.sql`
+  - [~] B3-F.1 编写 Flyway Migration `V33__m07_gate_result.sql`
     - `gate_result` 表（含 uk_gate_result_task、idx_gate_result_status，按 design §7.2）
     - _Requirements: R14.3, R14.4, R14.5, R14.8_
 
-  - [ ] B3-F.2 实现 GateResult Domain / DTO / Mapper
+  - [~] B3-F.2 实现 GateResult Domain / DTO / Mapper
     - `gate/domain/{GateResult,GateResultStatus,RuleEval}.java`
     - `gate/dto/{GateResultDTO,RuleEvalDTO}.java`
     - `gate/repository/GateResultMapper.java`
     - _Requirements: R14.3, R14.4, R14.8_
 
-  - [ ] B3-F.3 实现 6 个 MetricCollector
+  - [~] B3-F.3 实现 6 个 MetricCollector
     - `gate/collector/CriticalIssueCountCollector.java`：按 design §10.2 SQL 统计 severity ∈ (CRITICAL,HIGH) 且 status≠FALSE_POSITIVE 的 CodeIssue 数（R14.1, R17.6）
     - `SecurityIssueCountCollector`：rule_code 前缀或正则匹配安全规则（如 Semgrep `security.*`）
     - `TestCoverageCollector`：从 task 元数据或外部 coverage report 读取（占位实现：固定取 75；接受未来扩展）
@@ -864,7 +864,7 @@
     - 全部 `@Component`，由 Spring 注入到 `MetricCollectorRegistry`
     - _Requirements: R14.1, R12.6, R17.6_
 
-  - [ ] B3-F.4 实现 `OperatorEvaluator` 与 `GateRuleEngine`
+  - [~] B3-F.4 实现 `OperatorEvaluator` 与 `GateRuleEngine`
     - `gate/engine/DefaultOperatorEvaluator.java`：按 design §10.3 用 BigDecimal 比较 6 种 operator
     - `gate/engine/GateRuleEngine.java`：
       - 取 enabled QualityGate；遍历每条 enabled rule → MetricCollector.collect → OperatorEvaluator.compare
@@ -873,11 +873,11 @@
       - 持久化 GateResult（含 summary：failedRules、passedRules、aiAvailable）
     - _Requirements: R13.6, R14.1, R14.2, R14.3, R14.4, R14.5, R14.8_
 
-  - [ ] B3-F.5 实现 `GateEvaluatingStage`（替换占位）
+  - [~] B3-F.5 实现 `GateEvaluatingStage`（替换占位）
     - `stage()=GATE_EVALUATING`，`next()`：调 `gateRuleEngine.evaluate(taskId)`；GateResultStatus.FAILED → 转 FAILED_GATE；PASSED → 转 PASSED；同时回填 review_task.score / ai_available
     - _Requirements: R9.1, R14.3, R14.4_
 
-  - [ ] B3-F.6 实现 GateResult 查询接口
+  - [~] B3-F.6 实现 GateResult 查询接口
     - `GET /api/v1/review-tasks/{id}/gate-result`：`@RequirePermission(projectMember=true)`，返回 GateResultDTO（含 failedRules / passedRules 明细）
     - _Requirements: R14.8, R16.1_
 
@@ -920,13 +920,13 @@
   - _Depends: B3-F_
   - _Integration Node: IT-5_
 
-  - [ ] B4-A.1 实现 `CodeIssueStatus` 枚举与 `IssueStateMachine`
+  - [~] B4-A.1 实现 `CodeIssueStatus` 枚举与 `IssueStateMachine`
     - `issue/domain/CodeIssueStatus.java`：6 个状态
     - `issue/domain/IssueStateMachine.java`：`ALLOWED_ISSUE_EDGES` 集合（按 R17.1：NEW→CONFIRMED/FALSE_POSITIVE；CONFIRMED→PENDING_VERIFY/CLOSED；PENDING_VERIFY→CLOSED/REOPENED；CLOSED→REOPENED；REOPENED→CONFIRMED/FALSE_POSITIVE）
     - 提供 `tryTransit(from, to)` 与边集合查询方法（供属性测试使用）
     - _Requirements: R17.1_
 
-  - [ ] B4-A.2 实现 `IssueServiceImpl`
+  - [~] B4-A.2 实现 `IssueServiceImpl`
     - `page(IssueQuery)`：按 severity / status / source / filePath 过滤；按 severity 降序、createdAt 升序（R16.2, R16.3）
     - `get(id)`：返回 CodeIssueDTO（包含历史与评论可选 join）
     - `changeStatus(id, request)`：
@@ -937,7 +937,7 @@
     - `addComment(id, content)`：写 issue_comment
     - _Requirements: R17.1, R17.2, R17.3, R17.4, R17.5, R17.6（后者在 B3-F MetricCollector 已落实，本任务保证 status 改为 FALSE_POSITIVE 后立即对下次 evaluate 生效）_
 
-  - [ ] B4-A.3 实现 `IssueController`
+  - [~] B4-A.3 实现 `IssueController`
     - `GET /api/v1/review-tasks/{id}/issues`、`GET /api/v1/issues/{id}`、`PATCH /api/v1/issues/{id}/status`、`POST /api/v1/issues/{id}/comments`
     - 全部 `@RequirePermission(projectMember=true)`（projectId 通过 task_id 关联解析）
     - _Requirements: R16.2, R17_
@@ -961,19 +961,19 @@
   - _Depends: B4-A_
   - _Integration Node: IT-5_
 
-  - [ ] B4-B.1 实现 Report DTO
+  - [~] B4-B.1 实现 Report DTO
     - `report/dto/{ReviewReportDTO,TaskOverviewDTO,IssueCountAggDTO,GateResultSummaryDTO}.java`
     - 字段对齐 R16.1：taskOverview（taskNo / PR / commit / status / score）、gateResultSummary、issueCounts（按 severity 与 source 聚合）、aiAvailability
     - _Requirements: R16.1_
 
-  - [ ] B4-B.2 实现 `ReportServiceImpl`
+  - [~] B4-B.2 实现 `ReportServiceImpl`
     - `report(taskId)`：聚合 review_task + gate_result + code_issue 分组计数（按 severity / source）→ 一次 SQL 或多次小查询；缓存到 Caffeine（key=taskId, TTL=10s）
     - `diffView(taskId)`：调 `DiffViewService.diffView`（B3-C.6 提供），并叠加每行关联问题数（通过 code_issue.line_no 与 hunks 行匹配）
     - `logs(taskId, query)`：分页查询 task_log，支持 stage / level 过滤
     - 全部接口在 service 层校验项目成员
     - _Requirements: R16.1, R16.2, R16.4, R16.5, R16.6_
 
-  - [ ] B4-B.3 实现 `ReportController`
+  - [~] B4-B.3 实现 `ReportController`
     - `GET /api/v1/review-tasks/{id}/report`、`GET /api/v1/review-tasks/{id}/diff`、`GET /api/v1/review-tasks/{id}/logs`
     - 全部 `@RequirePermission(projectMember=true)`
     - _Requirements: R16_
@@ -991,19 +991,19 @@
   - _Depends: B3-F_
   - _Integration Node: IT-5_
 
-  - [ ] B4-C.1 实现 Dashboard DTO
+  - [~] B4-C.1 实现 Dashboard DTO
     - `dashboard/dto/{DashboardQuery,QualityTrendDTO,TrendPointDTO,RiskFileDTO}.java`
     - 字段：taskCount、passRate、avgScore、avgDurationSeconds（每日聚合）；RiskFileDTO 含 filePath、issueCount、weightedScore
     - _Requirements: R18.1, R18.3_
 
-  - [ ] B4-C.2 实现 `DashboardServiceImpl`
+  - [~] B4-C.2 实现 `DashboardServiceImpl`
     - `trend(projectId, query)`：startDate 与 endDate 跨度 ≤ 365 天，否则 `VALIDATION_ERROR`（R18.2）；按日 GROUP BY 聚合 review_task + gate_result，返回时间序列；optional `branch` 过滤
     - `topRiskFiles(projectId, topN)`：按 file_path 聚合 code_issue（severity 加权：CRITICAL=5, HIGH=3, MEDIUM=2, LOW=1, INFO=0.5）→ 取 TopN
     - `@RequirePermission(projectMember=true)` 由 controller 统一校验
     - 性能：基于近 30 天数据 P95 ≤ 2s；为 review_task(project_id, created_at) 已建索引（V30）
     - _Requirements: R18.1, R18.2, R18.3, R18.4, R18.5_
 
-  - [ ] B4-C.3 实现 `DashboardController`
+  - [~] B4-C.3 实现 `DashboardController`
     - `GET /api/v1/dashboard/projects/{id}/quality-trend`、`GET /api/v1/dashboard/projects/{id}/top-risk-files`
     - `@RequirePermission(projectMember=true)`
     - _Requirements: R18.4_
@@ -1022,17 +1022,17 @@
   - _Depends: B3-A, B3-F_
   - _Integration Node: IT-5_
 
-  - [ ] B4-D.1 编写 Flyway Migration `V50__m09_notification.sql`
+  - [~] B4-D.1 编写 Flyway Migration `V50__m09_notification.sql`
     - `notification` 表 + `idx_notification_user_read`（按 design §7.2）
     - _Requirements: R19.3, R19.5_
 
-  - [ ] B4-D.2 实现 Notification Domain / DTO / Mapper
+  - [~] B4-D.2 实现 Notification Domain / DTO / Mapper
     - `notification/domain/Notification.java`、`notification/dto/{NotificationDTO,NotificationQuery}.java`
     - `notification/repository/NotificationMapper.java`，自定义 SQL：`countUnreadByUser`、`pageByUser(query)`、`markRead(id, userId)`
     - 通知类型枚举：`TASK_PASSED`、`TASK_FAILED_GATE`、`TASK_EXEC_FAILED`、`WAIVER_SUBMITTED`、`WAIVER_APPROVED`、`WAIVER_REJECTED`、`ISSUE_ASSIGNED`
     - _Requirements: R19_
 
-  - [ ] B4-D.3 实现 `NotificationServiceImpl`
+  - [~] B4-D.3 实现 `NotificationServiceImpl`
     - `publishTaskStatusChanged(task)`：当 task.status 转为 PASSED / FAILED_GATE / EXECUTION_FAILED → 给任务发起人 + 项目所有 PROJECT_ADMIN 各发一条通知（R19.1）
     - `publishGateWaiverSubmitted(waiver)`：给项目所有 PROJECT_ADMIN 与 REVIEWER 发审批通知（R19.2）；预留 `publishGateWaiverApproved/Rejected`
     - `page(query)`：按 read / type / 分页（R19.3）
@@ -1040,12 +1040,12 @@
     - `archiveOldNotifications`：定时任务（@Scheduled）90 天前未读通知归档（R19.5）
     - _Requirements: R19.1, R19.2, R19.3, R19.4, R19.5_
 
-  - [ ] B4-D.4 接入领域事件
+  - [~] B4-D.4 接入领域事件
     - 在 `task` 模块发布 `TaskStatusChangedEvent`（B3-A 已发布或本任务补 publisher）；在 `gate` 模块发布 `GateWaiverSubmittedEvent`（B4-E 完成）
     - `notification/event/NotificationEventListener.java`：`@EventListener` 异步消费，调对应 publish 方法
     - _Requirements: R19.1, R19.2_
 
-  - [ ] B4-D.5 实现 `NotificationController`
+  - [~] B4-D.5 实现 `NotificationController`
     - `GET /api/v1/notifications`、`PATCH /api/v1/notifications/{id}/read`、`GET /api/v1/notifications/unread-count`
     - 已登录可见，service 内按当前用户隔离
     - _Requirements: R19.3, R19.4_
@@ -1063,16 +1063,16 @@
   - _Depends: B3-F, B2-A_
   - _Integration Node: IT-5_
 
-  - [ ] B4-E.1 编写 Flyway Migration `V51__m07_gate_waiver.sql`
+  - [~] B4-E.1 编写 Flyway Migration `V51__m07_gate_waiver.sql`
     - `gate_waiver` 表 + `idx_gate_waiver_task` + `uk_gate_waiver_active`（按 design §7.2）
     - _Requirements: R15.1, R15.6_
 
-  - [ ] B4-E.2 实现 GateWaiver Domain / DTO / Mapper
+  - [~] B4-E.2 实现 GateWaiver Domain / DTO / Mapper
     - `gate/waiver/domain/GateWaiver.java`、`gate/waiver/dto/{GateWaiverSubmitRequest,GateWaiverApproveRequest,GateWaiverDTO}.java`
     - `gate/waiver/repository/GateWaiverMapper.java`，自定义 SQL：`findActiveByTask(taskId)`、`expireOverdue()`
     - _Requirements: R15.1, R15.6_
 
-  - [ ] B4-E.3 实现 `GateWaiverServiceImpl`
+  - [~] B4-E.3 实现 `GateWaiverServiceImpl`
     - `submit(taskId, req)`：
       - 校验 task.status=FAILED_GATE（R15.1）；reason ≥ 10 字符（R15.2）；expireAt 必须 future
       - 检查活跃 waiver（PENDING / 未过期 APPROVED）→ 抛 `WAIVER_DUPLICATED`（R15.6）
@@ -1085,13 +1085,13 @@
     - `expireOverdueJob`：定时任务（每 5 分钟），把 expireAt 过期的 PENDING / APPROVED 置 EXPIRED
     - _Requirements: R15.1, R15.2, R15.3, R15.4, R15.5, R15.6_
 
-  - [ ] B4-E.4 实现 ProviderClient.postCommitStatus 三实现
+  - [~] B4-E.4 实现 ProviderClient.postCommitStatus 三实现
     - 在 B2-A.3 留白接口上完成：GitHub `POST /repos/{owner}/{repo}/statuses/{sha}`、GitLab `POST /projects/{id}/statuses/{sha}`、Gitee `POST /repos/{owner}/{repo}/statuses/{sha}`
     - 状态映射：PASSED/WAIVED → success；FAILED → failure
     - 描述包含 taskNo、score、failedRules 数量、报告 URL（R20.2）
     - _Requirements: R20.1, R20.2_
 
-  - [ ] B4-E.5 实现 `WritebackServiceImpl`
+  - [~] B4-E.5 实现 `WritebackServiceImpl`
     - `writeback(taskId, gateResult)`：
       - 取 RepositoryBinding（解密 accessToken）→ 取 ProviderClient
       - provider 不支持 commit status → 跳过并写 task_log(INFO)（R20.5）
@@ -1100,18 +1100,18 @@
     - 通过 Spring Retry `@Retryable(value=AiServiceUnavailableException.class, maxAttempts=3, backoff=@Backoff(delay=1000, multiplier=5))`
     - _Requirements: R14.6, R14.7, R20.1, R20.3, R20.4, R20.5_
 
-  - [ ] B4-E.6 实现 `GateWaiverController`
+  - [~] B4-E.6 实现 `GateWaiverController`
     - `POST /api/v1/review-tasks/{id}/gate-waivers`：`@RequirePermission(projectMember=true)`
     - `POST /api/v1/gate-waivers/{id}/approve`：`@RequirePermission(projectRole={PROJECT_ADMIN,REVIEWER})`
     - `GET /api/v1/review-tasks/{id}/gate-waivers`：列表
     - _Requirements: R15_
 
-  - [ ] B4-E.7 在 GateEvaluatingStage 之后挂接 Writeback
+  - [~] B4-E.7 在 GateEvaluatingStage 之后挂接 Writeback
     - 修改 B3-F.5 的 `GateEvaluatingStage.next()`：在 transit 终态后 publish `GateEvaluatedEvent`（包含 taskId、status）
     - `WritebackEventListener`（writeback 模块）：`@EventListener @Async` 接收事件 → 调用 `WritebackService.writeback`
     - _Requirements: R14.6, R20_
 
-  - [ ] B4-E.8 提供手动重试回写的接口
+  - [~] B4-E.8 提供手动重试回写的接口
     - `POST /api/v1/review-tasks/{id}/writeback/retry`：`@RequirePermission(projectRole={PROJECT_ADMIN,REVIEWER})`
     - 仅当上次回写状态为失败时允许（通过 task_log 中最近一条 WRITEBACK ERROR 标记位判断）
     - _Requirements: R14.7_
@@ -1154,50 +1154,50 @@
   - _Depends: B0-B（同时持续追踪 B1 / B2 / B3 / B4）_
   - _Integration Node: IT-2 / IT-3 / IT-4 / IT-5（分阶段验收）_
 
-  - [ ] B5-A.1 实现 `src/api/*.ts` 全部 axios 客户端
+  - [~] B5-A.1 实现 `src/api/*.ts` 全部 axios 客户端
     - 按 design.md §5.1 与 §8.7 接口清单实现：`auth.ts`、`user.ts`、`project.ts`、`repository.ts`、`reviewTask.ts`、`issue.ts`、`report.ts`、`gate.ts`、`gateWaiver.ts`、`dashboard.ts`、`notification.ts`、`admin.ts`
     - 与后端 DTO 类型对齐 `src/types/api.d.ts`
     - _Requirements: R1, R3~R22（前端访问层覆盖）_
 
-  - [ ] B5-A.2 实现 LoginPage（UI-001）
+  - [~] B5-A.2 实现 LoginPage（UI-001）
     - 表单（用户名 / 密码）+ 调用 `auth.login`；成功后跳转 `redirect` 或 `/dashboard`
     - 错误码 `AUTH_INVALID_CREDENTIALS` / `AUTH_ACCOUNT_DISABLED` 显示对应中文提示
     - _Requirements: R1.1, R1.2, R1.3_
 
-  - [ ] B5-A.3 实现 DashboardPage（UI-002）+ 全局头部
+  - [~] B5-A.3 实现 DashboardPage（UI-002）+ 全局头部
     - 调用 `dashboard.trend` + `dashboard.topRiskFiles`（依赖 B4-C）
     - 全局头部：项目切换器、未读通知红点（轮询 `/notifications/unread-count`，30s）、用户菜单（登出）
     - _Requirements: R18, R19_
 
-  - [ ] B5-A.4 实现项目相关页面（UI-003 / UI-004）
+  - [~] B5-A.4 实现项目相关页面（UI-003 / UI-004）
     - `ProjectListPage`：列表 + 关键字搜索 + 创建按钮（仅 PROJECT_ADMIN/SYSTEM_ADMIN）
     - `ProjectDetailPage`：项目信息 + 成员列表 + 仓库绑定卡片
     - 依赖 B1-C / B2-A
     - _Requirements: R4, R5, R6_
 
-  - [ ] B5-A.5 实现仓库绑定页面（UI-005）
+  - [~] B5-A.5 实现仓库绑定页面（UI-005）
     - `RepositoryBindingPage`：provider 选择 + 仓库 URL + accessToken（密码框）+ webhookSecret + "测试连通性" 按钮 + "保存绑定" 按钮 + 显示生成的 webhookUrl 复制按钮
     - 依赖 B2-A
     - _Requirements: R5_
 
-  - [ ] B5-A.6 实现成员管理页面（UI-004 内的成员标签页）
+  - [~] B5-A.6 实现成员管理页面（UI-004 内的成员标签页）
     - `MemberManagePage`：成员列表 + 添加成员对话框（用户搜索 + 角色选择）+ 移除按钮
     - 依赖 B1-C
     - _Requirements: R6_
 
-  - [ ] B5-A.7 实现质量门禁配置页面（UI-009）
+  - [~] B5-A.7 实现质量门禁配置页面（UI-009）
     - `QualityGatePage`：动态规则表格（metric / operator / threshold / severity / enabled），支持新增 / 删除 / 排序；保存调用 `gate.saveQualityGate`；"使用模板"按钮加载默认 3 条规则
     - 失败规则的 details 数组在 UI 内联高亮
     - 依赖 B2-B
     - _Requirements: R13_
 
-  - [ ] B5-A.8 实现评审任务列表页（UI-006）
+  - [~] B5-A.8 实现评审任务列表页（UI-006）
     - `ReviewTaskListPage`：筛选项目 / 状态 / 触发类型 / 时间范围；分页表格；"创建任务"按钮（CreateTaskDialog）
     - `CreateTaskDialog`：源分支 / 目标分支 / commitSha / prId（至少一项）→ 调 `reviewTask.create`，请求头携带 `Idempotency-Key`（前端 UUID 生成）
     - 依赖 B3-A
     - _Requirements: R8.1, R8.2, R8.4_
 
-  - [ ] B5-A.9 实现评审报告页（UI-007）
+  - [~] B5-A.9 实现评审报告页（UI-007）
     - `ReviewReportPage`：4 个 Tab（概览 / 问题列表 / 代码差异 / 执行日志）
     - 概览：调 `report.report`，展示 status / score / 门禁结果 / aiAvailable；可视化 issueCounts 饼图
     - 问题列表：调 `issue.page`，支持 severity / status / source / filePath 筛选；点击进入 `IssueDetailDrawer`
@@ -1207,31 +1207,31 @@
     - 依赖 B3 全部、B4-A、B4-B、B4-E
     - _Requirements: R9.4, R9.6, R15, R16_
 
-  - [ ] B5-A.10 实现问题详情抽屉（UI-008）
+  - [~] B5-A.10 实现问题详情抽屉（UI-008）
     - `IssueDetailDrawer.vue`：CodeIssue 详情 + 状态切换下拉 + comment 编辑（FALSE_POSITIVE / CLOSED 校验长度 ≥ 5）+ 评论时间线 + 历史记录
     - 状态切换调 `issue.changeStatus`；DEVELOPER 操作非自身任务时显示后端返回的 `VALIDATION_ERROR`
     - 依赖 B4-A
     - _Requirements: R17_
 
-  - [ ] B5-A.11 实现通知中心页面与红点
+  - [~] B5-A.11 实现通知中心页面与红点
     - `NotificationListPage`：分页列表 + read/type 筛选 + 一键已读
     - 头部红点：30s 轮询 unread-count；点击跳通知页
     - 依赖 B4-D
     - _Requirements: R19_
 
-  - [ ] B5-A.12 实现系统管理 4 个页面（UI-010）
+  - [~] B5-A.12 实现系统管理 4 个页面（UI-010）
     - `UserManagePage`（B1-A）、`ModelConfigPage`（B1-D）、`ScannerConfigPage`（B1-D）、`AuditLogPage`（B1-B + B1-D）
     - 全部仅 SYSTEM_ADMIN 可见，路由守卫拦截
     - apiKey / webhookSecret 字段始终展示为 `****`
     - _Requirements: R3, R21, R22, R23.3_
 
-  - [ ] B5-A.13 实现门禁豁免审批页面（嵌入 ReviewReportPage 或独立 `WaiverApprovalPage`）
+  - [~] B5-A.13 实现门禁豁免审批页面（嵌入 ReviewReportPage 或独立 `WaiverApprovalPage`）
     - 申请表单：reason（≥ 10 字符前端校验）+ expireAt（DatePicker，要求 future）
     - 审批入口：通知点击进入审批页面，approve / reject + 评论
     - 依赖 B4-E
     - _Requirements: R15_
 
-  - [ ] B5-A.14 维护 `src/router/index.ts` 路由元信息
+  - [~] B5-A.14 维护 `src/router/index.ts` 路由元信息
     - 完成 design.md §5.2 全部 15 条路由的 `meta.requiredRoles` 配置
     - 路由懒加载 + 错误页（403 forbidden、404 not-found）
     - _Requirements: R2_
@@ -1244,7 +1244,7 @@
     - `tests/unit/NotificationListPage.spec.ts`：未读筛选；markRead
     - _Requirements: R1, R13, R15, R16, R17, R19_
 
-  - [ ] B5-A.16 撰写前端 CHANGELOG 与文档
+  - [~] B5-A.16 撰写前端 CHANGELOG 与文档
     - `acrqg-web/CHANGELOG.md` 增量记录每个 IT 节点交付内容
     - `docs/frontend.md`：状态管理切片说明、组件契约
     - _Requirements: —_
@@ -1259,65 +1259,65 @@
   - _Depends: B0-A, B0-B, B1-A, B1-B, B1-C, B1-D, B2-A, B2-B, B3-A, B3-B, B3-C, B3-D, B3-E, B3-F, B4-A, B4-B, B4-C, B4-D, B4-E, B5-A_
   - _Integration Node: IT-6_
 
-  - [ ] B6-A.1 编写 k6 性能基准脚本：报告查询
+  - [~] B6-A.1 编写 k6 性能基准脚本：报告查询
     - 文件：`perf/report-query.js`
     - 场景：100 并发持续 5 分钟 GET `/api/v1/review-tasks/{id}/report`，预先种子化 100 个任务，每任务 200 个 issue
     - `thresholds`: `http_req_duration: ['p(95)<2000']`、`http_req_failed: ['rate<0.01']`
     - 输出 HTML 报告到 `perf/output/report-query-{timestamp}.html`
     - _Requirements: R16.6, R24.2_
 
-  - [ ] B6-A.2 编写 k6 性能基准脚本：看板查询与任务执行时延
+  - [~] B6-A.2 编写 k6 性能基准脚本：看板查询与任务执行时延
     - `perf/dashboard-trend.js`：50 并发查 30 天看板 P95 ≤ 2s（R18.5）
     - `perf/task-pipeline.js`：模拟 10 并发提交中小型 PR（mock provider + mock AI）→ 测量 PENDING → 终态全链路时长 P95 ≤ 180s（R24.1）
     - _Requirements: R18.5, R24.1, R24.2_
 
-  - [ ] B6-A.3 编写自动化越权用例集（design §15.6 表格）
+  - [~] B6-A.3 编写自动化越权用例集（design §15.6 表格）
     - 文件：`src/test/java/com/acrqg/platform/security/AuthorizationMatrixIT.java`
     - `@SpringBootTest` + Testcontainers + 8 行 design 表格全部用例
     - 断言：每行的 expected HTTP 状态与 ApiResponse.code 完全匹配
     - _Requirements: R23.1, R25.5_
 
-  - [ ] B6-A.4 编写敏感字段泄露探测测试
+  - [~] B6-A.4 编写敏感字段泄露探测测试
     - 文件：`src/test/java/com/acrqg/platform/security/SensitiveLeakIT.java`
     - 遍历所有控制器响应（通过 mvc + AOP 拦截器）；断言响应 JSON 中不出现 `password / accessToken / apiKey / webhookSecret / accessTokenEncrypted / apiKeyEncrypted` 字段名（或值不为 `****` 之外的形式）
     - _Requirements: R23.2, R23.3, R23.5_
 
-  - [ ] B6-A.5 编写端到端 Smoke 测试（覆盖 SD-1 ~ SD-6）
+  - [~] B6-A.5 编写端到端 Smoke 测试（覆盖 SD-1 ~ SD-6）
     - 文件：`src/test/java/com/acrqg/platform/e2e/EndToEndSmokeIT.java`
     - 流程：登录 → 创建项目 → 绑定仓库（mock provider）→ 配置门禁 → 模拟 webhook → 等待任务终态 → 报告可查询 → 状态回写到 mock provider 的 statuses endpoint → 通知列表出现 → 提交豁免 → 审批通过 → 回写 success（描述含"已豁免"）
     - 通过 WireMock 提供 GitHub / OpenAI 兼容 endpoints；通过 Testcontainers 提供 postgres / redis
     - _Requirements: R7, R9, R10, R11, R12, R14, R15, R19, R20_
 
-  - [ ] B6-A.6 编写门禁规则引擎独立用例集（R25.3）
+  - [~] B6-A.6 编写门禁规则引擎独立用例集（R25.3）
     - 文件：`src/test/java/com/acrqg/platform/gate/GateRuleEngineMatrixIT.java`
     - 6 metric × 5 operator × {BLOCKER, WARN} = 60 用例（覆盖率门槛要求）
     - 每条用例独立断言 actualValue / passed / score 值
     - _Requirements: R25.3_
 
-  - [ ] B6-A.7 编写 AI 降级场景测试（R25.4）
+  - [~] B6-A.7 编写 AI 降级场景测试（R25.4）
     - 文件：`src/test/java/com/acrqg/platform/ai/AiDegradationIT.java`
     - 三类用例：超时（WireMock fixed delay > timeout）、5xx、200 + Schema 校验失败
     - 期望：每类下任务推进到 GATE_EVALUATING（不抛 EXECUTION_FAILED），aiAvailable=false 落 task_log + summary
     - _Requirements: R12.4, R12.5, R25.4_
 
-  - [ ] B6-A.8 配置 JaCoCo 覆盖率门槛
+  - [~] B6-A.8 配置 JaCoCo 覆盖率门槛
     - 修改 `pom.xml` `jacoco-maven-plugin`：`<rule>` 设置 `INSTRUCTION` 与 `LINE` 覆盖率最低 0.70；`mvn verify` 时执行 `check`
     - 排除：`infra/log/MaskingLogbackEncoder.java`（低风险纯转发逻辑）、生成代码、配置类
     - 在 CI 中失败时输出未覆盖的 class 列表到 `target/site/jacoco/uncovered.txt`
     - _Requirements: R25.1_
 
-  - [ ] B6-A.9 维护 OpenAPI 契约基线
+  - [~] B6-A.9 维护 OpenAPI 契约基线
     - 启动 backend → 抓取 `/v3/api-docs` → 与 `docs/openapi-baseline.json` 对比
     - 文件：`src/test/java/com/acrqg/platform/contract/OpenApiContractIT.java`
     - 不一致时输出 diff，开发需手动审阅并更新 baseline + CHANGELOG
     - _Requirements: R25.2_
 
-  - [ ] B6-A.10 启动 / 中断 / 恢复测试
+  - [~] B6-A.10 启动 / 中断 / 恢复测试
     - 文件：`src/test/java/com/acrqg/platform/recovery/WorkerRecoveryIT.java`
     - 流程：启动 worker → 提交 5 个任务 → 在 STATIC_SCANNING 阶段 kill -9 worker → 启动 worker → 5 个任务被 TaskRecoveryRunner 置 EXECUTION_FAILED 且 task_log 含 `task interrupted by worker restart`；不得有任务直接跳到 PASSED
     - _Requirements: R24.4_
 
-  - [ ] B6-A.11 整理 IT-6 验收报告
+  - [~] B6-A.11 整理 IT-6 验收报告
     - 输出物：`docs/it6-verification-report.md`
     - 内容：覆盖率统计（≥ 70%）、k6 基准结果（P95 数据）、越权用例矩阵、PBT 8 条属性的 tries 数与通过率、SD-1~SD-6 用例链接
     - _Requirements: R25_
