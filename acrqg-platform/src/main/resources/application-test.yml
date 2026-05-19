@@ -1,0 +1,44 @@
+# ============================================================================
+#  Profile: test (Spring Boot 集成测试)
+#
+#  约定：
+#    - 集成测试通过 Testcontainers (postgres:15 / redis:7) 在 @DynamicPropertySource
+#      中覆盖 spring.datasource.url / spring.data.redis.url；
+#    - 不依赖真实 DB 的纯单元测试可启用 -Dspring.profiles.active=test 启动 ApplicationContext，
+#      此时关闭 flyway 与定时任务以避免初始化期阻塞；
+#    - app.test=true 由各模块在 @ConditionalOnProperty 中读取，用于跳过外部副作用
+#      (如真实 webhook 回写、AI 远程调用)。
+#
+#  关联：design.md §17.3，requirements.md R25.2
+# ============================================================================
+
+spring:
+  flyway:
+    # 集成测试由 Testcontainers 启动空数据库，由测试基类按需调用 Flyway / 自定义 SQL；
+    # 默认关闭以避免无 DB 场景下启动失败。
+    enabled: false
+  task:
+    scheduling:
+      pool:
+        size: 1
+
+logging:
+  level:
+    root: WARN
+    com.acrqg: DEBUG
+    org.springframework: WARN
+    org.testcontainers: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  test: true
+  cors:
+    allowed-origins: "*"

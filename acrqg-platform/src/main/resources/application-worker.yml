@@ -1,0 +1,23 @@
+# ============================================================================
+#  Profile: worker (服务身份 = 任务执行器)
+#
+#  作用：
+#    - 标记 app.role=worker，被业务 bean 通过 @ConditionalOnProperty / @Profile("worker")
+#      条件装配 (在 B3-A 任务编排、B0-A.13 启动期状态恢复中实现)；
+#    - 业务 web controller 仅在 @Profile("api") 下注册，因此 worker 进程默认不暴露
+#      业务 HTTP 接口；保留 servlet 容器仅用于暴露 /actuator/health 与 /actuator/metrics
+#      给 Prometheus / K8s livenessProbe / readinessProbe 抓取。
+#    - 不在此处设置 spring.main.web-application-type=none —— 若设为 none，
+#      actuator/Prometheus 端点将无法通过 HTTP 访问，违反 R24.6。
+#
+#  关联：design.md §17.3，requirements.md R24.6
+# ============================================================================
+
+app:
+  role: worker
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics

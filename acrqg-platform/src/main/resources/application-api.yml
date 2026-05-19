@@ -1,0 +1,16 @@
+# ============================================================================
+#  Profile: api (服务身份 = HTTP 接入)
+#
+#  作用：
+#    - 标记 app.role=api，被业务 bean 通过 @ConditionalOnProperty / @Profile("api")
+#      条件装配 (在 B0-A.13 / B3-A.6 等后续任务实现)；
+#    - 注册全部 web controller (含 /api/v1/**、/webhooks/**、/auth/**、/actuator/**)；
+#    - 不消费 Redis Stream (Worker 端独占)。
+#
+#  通常与环境 profile 组合使用：SPRING_PROFILES_ACTIVE=prod,api  或  dev,api。
+#
+#  关联：design.md §17.3，requirements.md R24.6
+# ============================================================================
+
+app:
+  role: api
