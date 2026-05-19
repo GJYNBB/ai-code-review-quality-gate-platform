@@ -1,0 +1,45 @@
+{
+    "name": "acrqg-web",
+    "private": true,
+    "version": "0.1.0-bootstrap",
+    "type": "module",
+    "description": "AI 辅助代码评审与质量门禁平台 — 前端 SPA",
+    "scripts": {
+        "dev": "vite",
+        "build": "vue-tsc -b && vite build",
+        "preview": "vite preview",
+        "lint": "eslint . --ext .ts,.tsx,.vue --fix",
+        "format": "prettier --write \"src/**/*.{ts,tsx,vue,scss,css,json,md}\"",
+        "test:unit": "vitest --run",
+        "test:unit:watch": "vitest"
+    },
+    "dependencies": {
+        "@element-plus/icons-vue": "^2.3.1",
+        "axios": "^1.7.7",
+        "dayjs": "^1.11.13",
+        "echarts": "^5.5.1",
+        "element-plus": "^2.8.4",
+        "pinia": "^2.2.4",
+        "vue": "^3.4.38",
+        "vue-echarts": "^7.0.3",
+        "vue-router": "^4.4.5"
+    },
+    "devDependencies": {
+        "@types/node": "^20.16.10",
+        "@typescript-eslint/eslint-plugin": "^7.18.0",
+        "@typescript-eslint/parser": "^7.18.0",
+        "@vitejs/plugin-vue": "^5.1.4",
+        "@vue/eslint-config-prettier": "^9.0.0",
+        "@vue/eslint-config-typescript": "^13.0.0",
+        "@vue/test-utils": "^2.4.6",
+        "eslint": "^8.57.1",
+        "eslint-plugin-vue": "^9.28.0",
+        "jsdom": "^25.0.1",
+        "prettier": "^3.3.3",
+        "sass": "^1.79.4",
+        "typescript": "^5.4.5",
+        "vite": "^5.4.8",
+        "vitest": "^2.1.2",
+        "vue-tsc": "^2.1.6"
+    }
+}
