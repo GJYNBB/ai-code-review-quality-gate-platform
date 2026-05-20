@@ -2,6 +2,7 @@ package com.acrqg.platform.admin.service.impl;
 
 import com.acrqg.platform.admin.domain.ModelConfig;
 import com.acrqg.platform.admin.domain.ScannerConfig;
+import com.acrqg.platform.admin.domain.SystemParam;
 import com.acrqg.platform.admin.dto.ModelConfigCreateRequest;
 import com.acrqg.platform.admin.dto.ModelConfigDTO;
 import com.acrqg.platform.admin.dto.ModelConfigUpdateRequest;
@@ -389,22 +390,117 @@ public class AdminServiceImpl implements AdminService {
     }
 
     // =====================================================================
-    // 系统参数管理（B1-D.5）—— 占位，B1-D.5 中实现
+    // 系统参数管理（B1-D.5）
     // =====================================================================
 
     @Override
     public SystemParamDTO getParam(String paramKey) {
-        throw new UnsupportedOperationException("getParam pending B1-D.5");
+        if (paramKey == null || paramKey.isBlank()) {
+            return null;
+        }
+        SystemParam row = systemParamMapper.selectByKey(paramKey);
+        if (row == null) {
+            return null;
+        }
+        return toDTO(row);
     }
 
     @Override
     public List<SystemParamDTO> listParams(String prefix) {
-        throw new UnsupportedOperationException("listParams pending B1-D.5");
+        String trimmed = (prefix == null || prefix.isBlank()) ? null : prefix.trim();
+        List<SystemParam> rows = systemParamMapper.listByPrefix(trimmed);
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<SystemParamDTO> result = new ArrayList<>(rows.size());
+        for (SystemParam row : rows) {
+            result.add(toDTO(row));
+        }
+        return result;
     }
 
     @Override
+    @Transactional
     public SystemParamDTO updateParam(String paramKey, String value) {
-        throw new UnsupportedOperationException("updateParam pending B1-D.5");
+        if (paramKey == null || paramKey.isBlank()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "paramKey 不能为空");
+        }
+        if (value == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "value 不能为空");
+        }
+        AuthenticatedUser caller = CurrentUserHolder.requireCurrent();
+
+        SystemParam existing = systemParamMapper.selectByKey(paramKey);
+        if (existing == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "参数不存在: " + paramKey);
+        }
+
+        // 已知 key 的范围校验（R21.4）
+        IntRange range = KNOWN_PARAM_RANGES.get(paramKey);
+        if (range != null) {
+            int parsed;
+            try {
+                parsed = Integer.parseInt(value.trim());
+            } catch (NumberFormatException ex) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                        "value 必须是整数: " + paramKey, ex);
+            }
+            if (!range.contains(parsed)) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                        "value out of range: " + paramKey
+                                + " expected [" + range.min() + "," + range.max()
+                                + "] but got " + parsed);
+            }
+        }
+
+        boolean sensitive = Boolean.TRUE.equals(existing.getSensitive());
+        String storedValue = sensitive ? tokenEncryptor.encrypt(value) : value;
+
+        // 审计 detail 中的变更前后值：敏感参数双向掩码（R22.5）
+        String beforeForAudit = sensitive ? MaskUtils.FULL_MASK : existing.getParamValue();
+        String afterForAudit = sensitive ? MaskUtils.FULL_MASK : value;
+
+        existing.setParamValue(storedValue);
+        existing.setUpdatedBy(caller.id());
+        systemParamMapper.updateById(existing);
+
+        publishAudit(caller, ACTION_SYSTEM_PARAM_UPDATED, RESOURCE_SYSTEM_PARAM,
+                paramKey,
+                detailOf(
+                        "paramKey", paramKey,
+                        "sensitive", sensitive,
+                        "diff", Map.of("paramValue", beforeForAudit + " -> " + afterForAudit)));
+
+        // R24.3：通过 Redis pub/sub 通知 Worker 60s 内热更新
+        publishParamChanged(paramKey, sensitive ? CHANNEL_PAYLOAD_SENSITIVE_CHANGED : value);
+
+        return toDTO(existing);
+    }
+
+    /**
+     * 发布参数变更通知到 Redis 通道 {@code param-changed:{key}}。
+     *
+     * <p>失败时仅记日志：DB 已经成功更新，缓存的滞后由 Worker 自身的兜底周期任务（如有）处理。
+     */
+    private void publishParamChanged(String paramKey, String payload) {
+        String channel = CHANNEL_PARAM_CHANGED_PREFIX + paramKey;
+        try {
+            stringRedisTemplate.convertAndSend(channel, payload);
+        } catch (RuntimeException ex) {
+            log.warn("publish param-changed failed: channel={} err={}", channel, ex.toString());
+        }
+    }
+
+    private SystemParamDTO toDTO(SystemParam entity) {
+        boolean sensitive = Boolean.TRUE.equals(entity.getSensitive());
+        String value = sensitive ? MaskUtils.FULL_MASK : entity.getParamValue();
+        return new SystemParamDTO(
+                entity.getParamKey(),
+                value,
+                entity.getDescription(),
+                sensitive,
+                entity.getUpdatedBy(),
+                entity.getUpdatedAt());
     }
 
     // =====================================================================
