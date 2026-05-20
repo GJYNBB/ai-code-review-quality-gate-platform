@@ -317,43 +317,43 @@
     - _Property: P8_
     - _Requirements: R22.4_
 
-- [ ] B1-C 项目与项目成员（M02）
+- [x] B1-C 项目与项目成员（M02）
   - _Branch: feat/m02-project_
   - _Depends: B0-A, B1-A（仅依赖 user 表，可与 B1-A 并行；合并顺序在 B1-A 后）_
   - _Integration Node: IT-2_
 
-  - [~] B1-C.1 编写 Flyway Migration `V11__m02_project.sql`
+  - [x] B1-C.1 编写 Flyway Migration `V11__m02_project.sql`
     - `project`、`project_member` 表完整 DDL + 索引（按 design §7.2）
     - `project` 的 `updated_at` 触发器
     - _Requirements: R4.1, R4.2, R6.1_
 
-  - [~] B1-C.2 实现 Project Domain / DTO / Mapper
+  - [x] B1-C.2 实现 Project Domain / DTO / Mapper
     - `project/domain/{Project,ProjectMember}.java`、`project/dto/{ProjectCreateRequest,ProjectUpdateRequest,ProjectDTO,ProjectQuery,AddMemberRequest}.java`
     - `project/repository/{ProjectMapper,ProjectMemberMapper}.java`，自定义 SQL：`countMembers(projectId)`、`isMember(projectId,userId)`、`roleOf(projectId,userId)`
     - _Requirements: R4.1, R4.3, R6.1_
 
-  - [~] B1-C.3 实现 `ProjectServiceImpl`
+  - [x] B1-C.3 实现 `ProjectServiceImpl`
     - `create`：name 唯一检查（捕获唯一约束冲突 → `PROJECT_NAME_EXISTS`）；language 校验枚举；创建后自动把创建者加入 project_member（PROJECT_ADMIN 角色）
     - `update`：校验调用者为该项目 PROJECT_ADMIN
     - `page` / `get`：支持关键字模糊；返回 memberCount
     - 通过 `ApplicationEventPublisher` 发布 AuditEvent（`PROJECT_CREATED`、`PROJECT_UPDATED`）
     - _Requirements: R4.1, R4.2, R4.3, R4.4, R4.5_
 
-  - [~] B1-C.4 实现项目成员管理（addMember / removeMember / list）
+  - [x] B1-C.4 实现项目成员管理（addMember / removeMember / list）
     - `addMember`：校验 userId 存在且 status=ENABLED，否则 `VALIDATION_ERROR`；唯一约束冲突按 `VALIDATION_ERROR` 返回
     - `removeMember`：仅删除 project_member 行，不删全局用户
     - `listMembers`
     - 移除后立即由 `PermissionAspect` 拒绝该用户对该项目的非公开访问（无需额外缓存清理，因 Aspect 每次请求实时查 isMember）
     - _Requirements: R6.1, R6.2, R6.3, R6.4_
 
-  - [~] B1-C.5 实现 `ProjectController`
+  - [x] B1-C.5 实现 `ProjectController`
     - `POST /api/v1/projects`：`@RequirePermission(role={PROJECT_ADMIN,SYSTEM_ADMIN})`
     - `GET /api/v1/projects`、`GET /api/v1/projects/{id}`、`PUT /api/v1/projects/{id}`：按权限注解配置
     - `POST /api/v1/projects/{id}/members`、`DELETE /api/v1/projects/{id}/members/{userId}`、`GET /api/v1/projects/{id}/members`
     - 全部启用 Bean Validation
     - _Requirements: R4, R6, R23.1_
 
-  - [~] B1-C.6 完善 `PermissionEvaluator.isProjectMember` 与 `hasProjectRole`
+  - [x] B1-C.6 完善 `PermissionEvaluator.isProjectMember` 与 `hasProjectRole`
     - 通过 `ProjectMemberMapper` 实现实时查询；为减少 DB 压力，使用 Caffeine 缓存（key=`{userId}:{projectId}`，TTL=60s）
     - 当 `removeMember` 时清理对应缓存项
     - _Requirements: R2, R6.4_
