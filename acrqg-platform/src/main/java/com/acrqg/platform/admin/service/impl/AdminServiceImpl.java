@@ -1,6 +1,7 @@
 package com.acrqg.platform.admin.service.impl;
 
 import com.acrqg.platform.admin.domain.ModelConfig;
+import com.acrqg.platform.admin.domain.ScannerConfig;
 import com.acrqg.platform.admin.dto.ModelConfigCreateRequest;
 import com.acrqg.platform.admin.dto.ModelConfigDTO;
 import com.acrqg.platform.admin.dto.ModelConfigUpdateRequest;
@@ -270,22 +271,121 @@ public class AdminServiceImpl implements AdminService {
     }
 
     // =====================================================================
-    // 扫描器管理（B1-D.4）—— 占位，B1-D.4 中实现
+    // 扫描器管理（B1-D.4）
     // =====================================================================
 
     @Override
+    @Transactional
     public ScannerConfigDTO upsertScanner(ScannerConfigRequest request) {
-        throw new UnsupportedOperationException("upsertScanner pending B1-D.4");
+        AuthenticatedUser caller = CurrentUserHolder.requireCurrent();
+
+        ScannerConfig existing = scannerConfigMapper.selectByName(request.name());
+        boolean inserting = (existing == null);
+        ScannerConfig entity = inserting ? new ScannerConfig() : existing;
+
+        Map<String, Object> diff = new LinkedHashMap<>();
+        boolean enabledValue = request.enabled() == null ? Boolean.TRUE : request.enabled();
+
+        if (inserting) {
+            entity.setName(request.name());
+            entity.setLanguage(request.language());
+            entity.setEnabled(enabledValue);
+            entity.setCommand(request.command());
+            entity.setResultParserType(request.resultParserType());
+            try {
+                scannerConfigMapper.insert(entity);
+            } catch (DuplicateKeyException ex) {
+                // 极端并发：另一线程在 selectByName 与 insert 之间插了同名行；改走 update 路径
+                ScannerConfig race = scannerConfigMapper.selectByName(request.name());
+                if (race == null) {
+                    throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                            "扫描器名称已存在: " + request.name(), ex);
+                }
+                entity = race;
+                inserting = false;
+                applyScannerDiff(entity, request, enabledValue, diff);
+                if (!diff.isEmpty()) {
+                    scannerConfigMapper.updateById(entity);
+                }
+            }
+        } else {
+            applyScannerDiff(entity, request, enabledValue, diff);
+            if (!diff.isEmpty()) {
+                scannerConfigMapper.updateById(entity);
+            }
+        }
+
+        Map<String, Object> auditDetail = new LinkedHashMap<>();
+        auditDetail.put("scannerId", entity.getId());
+        auditDetail.put("name", entity.getName());
+        auditDetail.put("operation", inserting ? "INSERT" : "UPDATE");
+        if (!diff.isEmpty()) {
+            auditDetail.put("diff", diff);
+        }
+        publishAudit(caller, ACTION_SCANNER_CONFIG_UPSERTED, RESOURCE_SCANNER_CONFIG,
+                String.valueOf(entity.getId()), auditDetail);
+
+        return toDTO(entity);
     }
 
     @Override
     public List<ScannerConfigDTO> listScanners() {
-        throw new UnsupportedOperationException("listScanners pending B1-D.4");
+        List<ScannerConfig> rows = scannerConfigMapper.selectList(
+                new QueryWrapper<ScannerConfig>().orderByAsc("id"));
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<ScannerConfigDTO> result = new ArrayList<>(rows.size());
+        for (ScannerConfig row : rows) {
+            result.add(toDTO(row));
+        }
+        return result;
     }
 
     @Override
     public ScannerConfigDTO getScanner(Long id) {
-        throw new UnsupportedOperationException("getScanner pending B1-D.4");
+        if (id == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "扫描器 id 不能为空");
+        }
+        ScannerConfig row = scannerConfigMapper.selectById(id);
+        if (row == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "扫描器不存在: " + id);
+        }
+        return toDTO(row);
+    }
+
+    /** 把 {@link ScannerConfigRequest} 中变化的字段写回 entity 并记录 diff。 */
+    private static void applyScannerDiff(ScannerConfig entity, ScannerConfigRequest request,
+                                         boolean enabledValue, Map<String, Object> diff) {
+        if (!request.language().equals(entity.getLanguage())) {
+            diff.put("language", entity.getLanguage() + " -> " + request.language());
+            entity.setLanguage(request.language());
+        }
+        if (entity.getEnabled() == null || entity.getEnabled() != enabledValue) {
+            diff.put("enabled", entity.getEnabled() + " -> " + enabledValue);
+            entity.setEnabled(enabledValue);
+        }
+        if (!request.command().equals(entity.getCommand())) {
+            diff.put("command", entity.getCommand() + " -> " + request.command());
+            entity.setCommand(request.command());
+        }
+        if (!request.resultParserType().equals(entity.getResultParserType())) {
+            diff.put("resultParserType",
+                    entity.getResultParserType() + " -> " + request.resultParserType());
+            entity.setResultParserType(request.resultParserType());
+        }
+    }
+
+    private static ScannerConfigDTO toDTO(ScannerConfig entity) {
+        return new ScannerConfigDTO(
+                entity.getId(),
+                entity.getName(),
+                entity.getLanguage(),
+                Boolean.TRUE.equals(entity.getEnabled()),
+                entity.getCommand(),
+                entity.getResultParserType(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt());
     }
 
     // =====================================================================
