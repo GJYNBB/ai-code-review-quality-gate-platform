@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    UserMapper.xml (B1-A.1)
+    Covers: R1.1, R1.2, R3.1, R3.4
+
+    设计说明：
+    - 通过 collection ResultMap 把 user 与 user_role/role 的 1:N 关系一次查询装配，
+      避免 N+1。
+    - 分页场景：先用一个子查询 (SELECT u.id FROM "user" ... ORDER BY ... LIMIT/OFFSET)
+      取出当前页的 user.id 集合，再外层 LEFT JOIN user_role + role。这样既能利用
+      ORDER BY id DESC 做稳定分页，又不会因 JOIN 多角色行而把 LIMIT 的语义破坏。
+    - 关键字过滤：使用 PostgreSQL 的 ILIKE 实现大小写不敏感匹配。
+-->
+<mapper namespace="com.acrqg.platform.auth.repository.UserMapper">
+
+    <!-- =================================================================
+         ResultMap：User + roles 集合
+         ================================================================= -->
+    <resultMap id="UserWithRolesMap" type="com.acrqg.platform.auth.domain.User">
+        <id     column="id"            property="id"/>
+        <result column="username"      property="username"/>
+        <result column="email"         property="email"/>
+        <result column="password_hash" property="passwordHash"/>
+        <result column="status"        property="status"/>
+        <result column="created_at"    property="createdAt"/>
+        <result column="updated_at"    property="updatedAt"/>
+        <collection property="roles" ofType="java.lang.String" javaType="java.util.ArrayList">
+            <result column="role_code"/>
+        </collection>
+    </resultMap>
+
+    <!-- =================================================================
+         按用户名取用户 + 角色（用于登录）
+         ================================================================= -->
+    <select id="selectWithRolesByUsername" resultMap="UserWithRolesMap">
+        SELECT u.id, u.username, u.email, u.password_hash, u.status,
+               u.created_at, u.updated_at,
+               r.code AS role_code
+          FROM "user" u
+          LEFT JOIN user_role ur ON ur.user_id = u.id
+          LEFT JOIN role r ON r.id = ur.role_id
+         WHERE u.username = #{username}
+         ORDER BY u.id, r.code
+    </select>
+
+    <!-- =================================================================
+         按 id 取用户 + 角色（用于 me / 详情）
+         ================================================================= -->
+    <select id="selectWithRolesById" resultMap="UserWithRolesMap">
+        SELECT u.id, u.username, u.email, u.password_hash, u.status,
+               u.created_at, u.updated_at,
+               r.code AS role_code
+          FROM "user" u
+          LEFT JOIN user_role ur ON ur.user_id = u.id
+          LEFT JOIN role r ON r.id = ur.role_id
+         WHERE u.id = #{id}
+         ORDER BY u.id, r.code
+    </select>
+
+    <!-- =================================================================
+         分页查询：先选 id 再 JOIN，避免 LIMIT 语义被 1:N 破坏
+         ================================================================= -->
+    <select id="pageWithRoles" resultMap="UserWithRolesMap">
+        SELECT u.id, u.username, u.email, u.password_hash, u.status,
+               u.created_at, u.updated_at,
+               r.code AS role_code
+          FROM "user" u
+          LEFT JOIN user_role ur ON ur.user_id = u.id
+          LEFT JOIN role r ON r.id = ur.role_id
+         WHERE u.id IN (
+             SELECT sub.id
+               FROM (
+                   SELECT DISTINCT u2.id
+                     FROM "user" u2
+                     LEFT JOIN user_role ur2 ON ur2.user_id = u2.id
+                     LEFT JOIN role r2 ON r2.id = ur2.role_id
+                    <where>
+                        <if test="keyword != null and keyword != ''">
+                            AND (u2.username ILIKE CONCAT('%', #{keyword}, '%')
+                              OR u2.email    ILIKE CONCAT('%', #{keyword}, '%'))
+                        </if>
+                        <if test="status != null and status != ''">
+                            AND u2.status = #{status}
+                        </if>
+                        <if test="role != null and role != ''">
+                            AND r2.code = #{role}
+                        </if>
+                    </where>
+                    ORDER BY u2.id DESC
+                    LIMIT #{limit} OFFSET #{offset}
+               ) sub
+         )
+         ORDER BY u.id DESC, r.code
+    </select>
+
+    <!-- =================================================================
+         分页 count：与 pageWithRoles 同等过滤条件
+         ================================================================= -->
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(DISTINCT u.id)
+          FROM "user" u
+          LEFT JOIN user_role ur ON ur.user_id = u.id
+          LEFT JOIN role r ON r.id = ur.role_id
+         <where>
+            <if test="keyword != null and keyword != ''">
+                AND (u.username ILIKE CONCAT('%', #{keyword}, '%')
+                  OR u.email    ILIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND u.status = #{status}
+            </if>
+            <if test="role != null and role != ''">
+                AND r.code = #{role}
+            </if>
+         </where>
+    </select>
+
+</mapper>
