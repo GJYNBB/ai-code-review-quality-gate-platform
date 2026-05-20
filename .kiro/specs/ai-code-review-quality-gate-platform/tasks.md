@@ -224,19 +224,19 @@
 
 ### B1 — 独立模块并行实现（Integration Node IT-2）
 
-- [ ] B1-A 用户认证与用户管理（M01）
+- [x] B1-A 用户认证与用户管理（M01）
   - _Branch: feat/m01-auth_
   - _Depends: B0-A_
   - _Integration Node: IT-2_
 
-  - [-] B1-A.1 实现 Auth Domain / DTO / Mapper
+  - [x] B1-A.1 实现 Auth Domain / DTO / Mapper
     - `auth/domain/{User,UserRole,Role}.java`（DO，对应 V1 表）
     - `auth/dto/{LoginRequest,LoginResultDTO,RefreshResultDTO,UserDTO}.java`（按 design §8.4 字段与 Bean Validation 注解）
     - `auth/repository/{UserMapper,RoleMapper,UserRoleMapper}.java`（MyBatis-Plus）
     - `auth/repository/mapper/UserMapper.xml`：`selectWithRolesByUsername`、`selectWithRolesById`
     - _Requirements: R1.1, R1.6, R3.4_
 
-  - [-] B1-A.2 实现 `AuthServiceImpl`：login / logout / refresh / me
+  - [x] B1-A.2 实现 `AuthServiceImpl`：login / logout / refresh / me
     - `login(LoginRequest)`：BCrypt 校验密码；status=DISABLED → 抛 `AUTH_ACCOUNT_DISABLED`；用户名/密码错 → 抛 `AUTH_INVALID_CREDENTIALS`（响应文案不区分两者）；签发 access + refresh，返回 `LoginResultDTO`
     - `logout(String accessToken)`：解析 jti → 加入 Redis 黑名单（TTL = token 剩余有效期）
     - `refresh(String refreshToken)`：校验 refreshToken 未撤销 → 签发新 accessToken
@@ -244,19 +244,19 @@
     - 写审计日志（`登录成功`、`登出`），通过 `ApplicationEventPublisher` 发布 `AuditEvent`
     - _Requirements: R1.1, R1.2, R1.3, R1.4, R1.5, R1.6_
 
-  - [-] B1-A.3 实现 `AuthController`
+  - [x] B1-A.3 实现 `AuthController`
     - `POST /api/v1/auth/login`（公开）、`POST /api/v1/auth/logout`（已登录）、`POST /api/v1/auth/refresh`（公开）、`GET /api/v1/auth/me`（已登录）
     - 全部使用 `ApiResponse<T>` 包装，登录失败按 `ErrorCode.httpStatus()` 返回 401
     - _Requirements: R1.1, R1.2, R1.3, R1.4, R1.5, R23.1_
 
-  - [-] B1-A.4 实现 `UserService` 与 `UserController`
+  - [x] B1-A.4 实现 `UserService` 与 `UserController`
     - `UserService.page(UserQuery)`：keyword 模糊匹配 username/email；status / role 精确过滤；分页排序
     - `UserService.changeStatus(id, status)`：当 status 切到 DISABLED 时，立即将该用户所有 jti 加入黑名单，撤销其 refreshToken；写审计
     - `UserService.create(UserCreateRequest)`：username / email 唯一校验；BCrypt 哈希
     - `UserController`：`GET /api/v1/users`、`POST /api/v1/users`、`PATCH /api/v1/users/{id}/status`，全部 `@RequirePermission(role=SYSTEM_ADMIN)`
     - _Requirements: R3.1, R3.2, R3.3, R3.4_
 
-  - [-] B1-A.5 实现 `PermissionEvaluator.hasAnyRole` 完整逻辑
+  - [x] B1-A.5 实现 `PermissionEvaluator.hasAnyRole` 完整逻辑
     - 在 B0-A 占位基础上，从当前用户的 roles 列表与传入 Role[] 求交集；缺失 jwt claims 中的 roles 时回库查询并缓存到 ThreadLocal
     - _Requirements: R2.1_
 
@@ -366,23 +366,23 @@
     - 完整流程：SYSTEM_ADMIN 创建项目 → 自动成为 PROJECT_ADMIN → 添加 DEVELOPER → 该 DEVELOPER 可查项目详情 → 移除后再访问返回 403
     - _Requirements: R4, R6_
 
-- [ ] B1-D 系统管理（M10：模型 / 扫描器 / 系统参数）
+- [x] B1-D 系统管理（M10：模型 / 扫描器 / 系统参数）
   - _Branch: feat/m10-admin_
   - _Depends: B0-A, B1-B（审计 event 监听，可与 B1-B 并行；合并顺序在 B1-B 后）_
   - _Integration Node: IT-2_
 
-  - [~] B1-D.1 编写 Flyway Migration `V12__m10_admin.sql`
+  - [x] B1-D.1 编写 Flyway Migration `V12__m10_admin.sql`
     - `model_config`、`scanner_config`、`system_param` 表（按 design §7.2）
     - 种子数据：4 条 scanner_config（checkstyle / eslint / pylint / semgrep，含 command 模板与 result_parser_type）；`system_param` 默认值：`review.worker.concurrency=4`、`ai.review.timeout.seconds=60`、`diff.maxLinesPerFile=5000`、`gate.score.formula.weight.default=1.0`、`tokenEncryptionKey`（占位，从环境变量装载，DB 不存明文）
     - _Requirements: R21.1, R21.3, R21.4_
 
-  - [~] B1-D.2 实现 Admin Domain / DTO / Mapper
+  - [x] B1-D.2 实现 Admin Domain / DTO / Mapper
     - `admin/domain/{ModelConfig,ScannerConfig,SystemParam}.java`
     - `admin/dto/{ModelConfigCreateRequest,ModelConfigDTO,ScannerConfigRequest,ScannerConfigDTO,SystemParamDTO,SystemParamUpdateRequest}.java`
     - `admin/repository/{ModelConfigMapper,ScannerConfigMapper,SystemParamMapper}.java`
     - _Requirements: R21.1, R21.3, R21.4_
 
-  - [~] B1-D.3 实现 `AdminService`：模型管理
+  - [x] B1-D.3 实现 `AdminService`：模型管理
     - `createModel`：apiKey 经 `TokenEncryptor.encrypt` 后存储；返回 DTO 中 `apiKeyMasked="****"`
     - `listModels` / `getModel`：apiKey 始终掩码
     - `updateModel` / `enableDisableModel`
@@ -390,13 +390,13 @@
     - 提供内部接口 `decryptModelApiKey(modelId)`（仅供 B3-E AI 客户端使用）
     - _Requirements: R21.1, R21.2, R21.5, R23.2_
 
-  - [~] B1-D.4 实现 `AdminService`：扫描器管理
+  - [x] B1-D.4 实现 `AdminService`：扫描器管理
     - `upsertScanner(name, language, enabled, command, resultParserType)`：command 为模板字符串，含 `{workdir}`、`{file}` 占位；name 唯一
     - `listScanners` / `getScanner`
     - 写审计：`SCANNER_CONFIG_UPSERTED`
     - _Requirements: R21.3_
 
-  - [~] B1-D.5 实现 `AdminService`：系统参数管理
+  - [x] B1-D.5 实现 `AdminService`：系统参数管理
     - `getParam(key)` / `listParams(prefix)`
     - `updateParam(key, value)`：按 key 类型校验：`review.worker.concurrency` ∈ [1,32]、`ai.review.timeout.seconds` ∈ [10,300]、`diff.maxLinesPerFile` ∈ [100,50000]；越界抛 `VALIDATION_ERROR`
     - 敏感参数（sensitive=true）存储前加密、查询时掩码
@@ -404,7 +404,7 @@
     - 通过 Redis pub/sub 发布 `param-changed:{key}` 事件，供 Worker 在 60s 内热更新（R24.3）
     - _Requirements: R21.4, R21.5, R22.1, R24.3_
 
-  - [~] B1-D.6 实现 `AdminController`
+  - [x] B1-D.6 实现 `AdminController`
     - `GET/POST /api/v1/admin/model-configs`、`PATCH /api/v1/admin/model-configs/{id}`
     - `GET /api/v1/admin/scanners`、`POST /api/v1/admin/scanners`
     - `GET /api/v1/admin/system-params`、`PATCH /api/v1/admin/system-params/{key}`
