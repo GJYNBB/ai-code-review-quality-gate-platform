@@ -17,31 +17,25 @@ import com.acrqg.platform.repository.dto.RepositoryTestRequest;
  *   <li>{@link GiteeClient}  —— gitee.com REST v5。</li>
  * </ul>
  *
- * <p>调用方应通过 {@link ProviderClientFactory#getByProvider} 取得实例，避免
- * 在业务模块内 hardcode 任一具体实现。本接口的方法签名同样镜像 design.md §6.2
- * {@code public interface ProviderClient}：
- * <pre>
- * String name();
- * void postCommitStatus(CommitStatusRequest req);     // R20.1 / R20.2
- * DiffPayload fetchDiff(DiffFetchRequest req);        // R10.1
- * boolean ping(RepositoryTestRequest req);            // R5.1
- * </pre>
+ * <p>调用方应通过 {@link ProviderClientFactory#byProvider} 取得实例，避免
+ * 在业务模块内 hardcode 任一具体实现。
  *
- * <p><b>B2-A 阶段范围</b>：
+ * <p><b>实现状态</b>：
  * <ul>
- *   <li>{@link #ping} 由本任务（B2-A.3）完整实现，{@link #name()} 返回平台代码；</li>
- *   <li>{@link #fetchDiff} / {@link #postCommitStatus} 在本任务中由各实现抛出
- *       {@link UnsupportedOperationException}（"TODO: B3-C / B4-E"），
- *       后续在对应任务中替换为真实实现；调用方在 B2-A 阶段不会触发它们。</li>
+ *   <li>{@link #ping}      —— B2-A.3 完整实现；</li>
+ *   <li>{@link #fetchDiff} —— B3-C.3 完整实现；网络 / 4xx / 5xx 异常抛
+ *       {@link DiffFetchException}；</li>
+ *   <li>{@link #postCommitStatus} —— B4-E 实现；当前抛
+ *       {@link UnsupportedOperationException}。</li>
  * </ul>
  *
  * <p>另外注意：design.md 把 ping 写成 {@code boolean}，但 {@code RepositoryService}
  * 需要在不可达时把 message 透传给 {@link com.acrqg.platform.common.api.ErrorCode#REPOSITORY_UNREACHABLE}
  * 的响应 details，因此本接口在保留 {@link #ping(RepositoryTestRequest)} 签名的
- * 同时返回 {@link ConnectivityResultDTO}（{@code reachable + message}）。这是
- * design 与 requirements R5.2 在落地层面的最小补全（R5.2 要求"不可访问时返回原因"）。
+ * 同时返回 {@link ConnectivityResultDTO}。这是 design 与 requirements R5.2
+ * 在落地层面的最小补全。
  *
- * <p>Covers: R5.1, R5.2, R10.1, R20.1, R20.2。
+ * <p>Covers: R5.1, R5.2, R10.1, R10.4, R20.1, R20.2, R23.3。
  */
 public interface ProviderClient {
 
@@ -58,7 +52,7 @@ public interface ProviderClient {
      *   <li>HTTP 401 / 403 → {@code reachable=false, message="invalid token"}；</li>
      *   <li>HTTP 404 → {@code reachable=false, message="repo not found"}；</li>
      *   <li>其他 4xx / 5xx → {@code reachable=false, message="unreachable: HTTP {status}"}；</li>
-     *   <li>网络 / DNS / 解析异常 → {@code reachable=false, message=Throwable.getMessage()}。</li>
+     *   <li>网络 / DNS / 解析异常 → {@code reachable=false, message=...}。</li>
      * </ul>
      *
      * <p>实现 <b>不得</b> 把 access token 拼接到日志或返回 message 中（R23.3）。
@@ -69,21 +63,30 @@ public interface ProviderClient {
     ConnectivityResultDTO ping(RepositoryTestRequest req);
 
     /**
-     * 拉取 diff（B3-C 实现）。
+     * 拉取 PR / MR 的变更文件 diff（B3-C.3）。
      *
-     * <p>本任务（B2-A）下的实现一律抛 {@link UnsupportedOperationException}
-     * 提示 {@code "TODO: B3-C will implement"}，避免被误调用。
+     * <p>语义：
+     * <ul>
+     *   <li>访问平台 REST API 列出 PR/MR 的变更文件，构造
+     *       {@link DiffPayload}；</li>
+     *   <li>支持分页（GitHub / Gitee 的 {@code page=&per_page=}；GitLab 一次性返回
+     *       changes 数组），分页迭代上限由实现按 {@code MAX_PAGES} 兜底；</li>
+     *   <li>4xx / 5xx 与网络异常一律封装为 {@link DiffFetchException}（R10.4）；</li>
+     *   <li>返回的 {@link DiffPayload#files()} 列表保持平台返回顺序，重复文件名由
+     *       上游 DiffParser 通过 {@code uk_diff_file_task_path} 兜底；</li>
+     *   <li>实现 <b>不得</b> 把 access token 写入日志 / message（R23.3）。</li>
+     * </ul>
      *
-     * @param req           diff 拉取参数
-     * @param decryptedToken {@code RepositoryService.decryptAccessToken} 返回的明文 token
-     * @return diff 载荷
+     * @param req 拉取参数（含 accessToken）
+     * @return diff 载荷，永不为 {@code null}
+     * @throws DiffFetchException 网络 / HTTP 错误
      */
-    DiffPayload fetchDiff(DiffFetchRequest req, String decryptedToken);
+    DiffPayload fetchDiff(DiffFetchRequest req);
 
     /**
      * 回写 commit status（B4-E 实现）。
      *
-     * <p>本任务（B2-A）下的实现一律抛 {@link UnsupportedOperationException}
+     * <p>本任务（B3-C）下的实现一律抛 {@link UnsupportedOperationException}
      * 提示 {@code "TODO: B4-E will implement"}，避免被误调用。
      *
      * @param req           回写请求
