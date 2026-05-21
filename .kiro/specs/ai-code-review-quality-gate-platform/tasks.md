@@ -956,24 +956,24 @@
     - _Property: P2_
     - _Requirements: R17.1, R17.2, R17.3_
 
-- [ ] B4-B 评审报告聚合（M08 Report）
+- [x] B4-B 评审报告聚合（M08 Report）
   - _Branch: feat/m08-report_
   - _Depends: B4-A_
   - _Integration Node: IT-5_
 
-  - [~] B4-B.1 实现 Report DTO
+  - [x] B4-B.1 实现 Report DTO
     - `report/dto/{ReviewReportDTO,TaskOverviewDTO,IssueCountAggDTO,GateResultSummaryDTO}.java`
     - 字段对齐 R16.1：taskOverview（taskNo / PR / commit / status / score）、gateResultSummary、issueCounts（按 severity 与 source 聚合）、aiAvailability
     - _Requirements: R16.1_
 
-  - [~] B4-B.2 实现 `ReportServiceImpl`
+  - [x] B4-B.2 实现 `ReportServiceImpl`
     - `report(taskId)`：聚合 review_task + gate_result + code_issue 分组计数（按 severity / source）→ 一次 SQL 或多次小查询；缓存到 Caffeine（key=taskId, TTL=10s）
     - `diffView(taskId)`：调 `DiffViewService.diffView`（B3-C.6 提供），并叠加每行关联问题数（通过 code_issue.line_no 与 hunks 行匹配）
     - `logs(taskId, query)`：分页查询 task_log，支持 stage / level 过滤
     - 全部接口在 service 层校验项目成员
     - _Requirements: R16.1, R16.2, R16.4, R16.5, R16.6_
 
-  - [~] B4-B.3 实现 `ReportController`
+  - [x] B4-B.3 实现 `ReportController`
     - `GET /api/v1/review-tasks/{id}/report`、`GET /api/v1/review-tasks/{id}/diff`、`GET /api/v1/review-tasks/{id}/logs`
     - 全部 `@RequirePermission(projectMember=true)`
     - _Requirements: R16_
