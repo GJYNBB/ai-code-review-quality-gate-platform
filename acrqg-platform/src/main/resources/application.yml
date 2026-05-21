@@ -160,6 +160,9 @@ app:
     # Webhook 签名头名 (R7.1 / 17.2)；GitHub/Gitee 默认为 X-Hub-Signature-256，
     # GitLab 使用 X-Gitlab-Token 时由 provider-specific 解析器单独处理。
     signature-header: ${WEBHOOK_SIGNATURE_HEADER:X-Hub-Signature-256}
+    # 平台对外 base URL（R5.5）；RepositoryServiceImpl 拼接 /api/v1/webhooks/git
+    # 后落库到 repository_binding.webhook_url。生产环境应配置为公网可达的 HTTPS 域名。
+    base-url: ${WEBHOOK_BASE_URL:https://localhost:8080}
 
   # CORS 配置由各 profile 覆盖；这里给出空值占位，便于 @ConfigurationProperties 绑定。
   cors:
