@@ -441,29 +441,29 @@
 
 ### B2 — 仓库绑定与门禁配置（Integration Node IT-3）
 
-- [ ] B2-A 代码仓库绑定（M02）
+- [x] B2-A 代码仓库绑定（M02）
   - _Branch: feat/m02-repository_
   - _Depends: B1-C, B1-D_
   - _Integration Node: IT-3_
 
-  - [~] B2-A.1 编写 Flyway Migration `V20__m02_repository.sql`
+  - [x] B2-A.1 编写 Flyway Migration `V20__m02_repository.sql`
     - `repository_binding` 表完整 DDL + uk_repository_binding_project + updated_at 触发器
     - _Requirements: R5.6_
 
-  - [~] B2-A.2 实现 Repository Domain / DTO / Mapper
+  - [x] B2-A.2 实现 Repository Domain / DTO / Mapper
     - `repository/domain/RepositoryBinding.java`
     - `repository/dto/{RepositoryTestRequest,RepositoryBindRequest,RepositoryBindingDTO,ConnectivityResultDTO}.java`（按 design §8.4，accessToken / webhookSecret 标 `@NotBlank @Size`）
     - `repository/repository/RepositoryBindingMapper.java`
     - _Requirements: R5.1, R5.2, R5.3, R5.4_
 
-  - [~] B2-A.3 实现 ProviderClient 抽象与三实现（GITHUB / GITLAB / GITEE）
+  - [x] B2-A.3 实现 ProviderClient 抽象与三实现（GITHUB / GITLAB / GITEE）
     - `repository/client/ProviderClient.java`：`name()`、`ping(RepositoryTestRequest)`、`fetchDiff(DiffFetchRequest)`、`postCommitStatus(CommitStatusRequest)` 接口
     - 三实现：`GithubClient`、`GitlabClient`、`GiteeClient`，使用 Spring `RestClient`，超时 10s
     - `repository/client/ProviderClientFactory.java`：根据 provider 字符串返回对应 client
     - 在 B2-A 阶段仅实现 `ping`；`fetchDiff` 与 `postCommitStatus` 留接口，供 B3-C 与 B4-E 实现
     - _Requirements: R5.1, R5.2, R10.1, R20.1_
 
-  - [~] B2-A.4 实现 `RepositoryServiceImpl`
+  - [x] B2-A.4 实现 `RepositoryServiceImpl`
     - `test`：调用对应 ProviderClient.ping，返回 reachable + message；不持久化
     - `bind`：先 ping 通 → 加密 accessToken / webhookSecret → 生成 webhookUrl（`https://{host}/api/v1/webhooks/git`）→ 写库；ping 失败抛 `REPOSITORY_UNREACHABLE`
     - `get`：返回 RepositoryBindingDTO（不含密文字段）
@@ -471,7 +471,7 @@
     - 写审计：`REPOSITORY_BOUND`、`REPOSITORY_UPDATED`（accessToken 字段掩码）
     - _Requirements: R5.1, R5.2, R5.3, R5.4, R5.5, R5.6, R23.2, R23.3_
 
-  - [~] B2-A.5 实现 `RepositoryController`
+  - [x] B2-A.5 实现 `RepositoryController`
     - `POST /api/v1/projects/{id}/repository/test`、`POST /api/v1/projects/{id}/repository`、`GET /api/v1/projects/{id}/repository`
     - 写接口：`@RequirePermission(projectMember=true, projectRole=PROJECT_ADMIN)`
     - 读接口：`@RequirePermission(projectMember=true)`
