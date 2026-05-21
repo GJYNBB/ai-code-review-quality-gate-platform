@@ -86,11 +86,19 @@ public interface ProviderClient {
     /**
      * 回写 commit status（B4-E 实现）。
      *
-     * <p>本任务（B3-C）下的实现一律抛 {@link UnsupportedOperationException}
-     * 提示 {@code "TODO: B4-E will implement"}，避免被误调用。
+     * <p>实现要求：
+     * <ul>
+     *   <li>构造平台原生 status 请求，依各 provider 的 API 规范映射 state 字面量；</li>
+     *   <li>HTTP 请求超时 ≤ 10s（与 ping / fetchDiff 一致）；</li>
+     *   <li>4xx / 5xx / 网络异常一律抛
+     *       {@link com.acrqg.platform.writeback.exception.WritebackException
+     *       WritebackException}，由 WritebackService 决定是否重试（4xx 不重试，5xx 重试）；</li>
+     *   <li>实现 <b>不得</b> 把 access token 写入日志或异常 message。</li>
+     * </ul>
      *
      * @param req           回写请求
      * @param decryptedToken 已解密的 access token，仅在 HTTP Authorization 头中使用
+     * @throws com.acrqg.platform.writeback.exception.WritebackException 网络 / HTTP 错误
      */
     void postCommitStatus(CommitStatusRequest req, String decryptedToken);
 }
