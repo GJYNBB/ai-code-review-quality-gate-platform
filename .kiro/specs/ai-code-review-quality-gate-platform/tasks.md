@@ -915,18 +915,18 @@
 
 ### B4 — 报告 / 看板 / 通知 / 回写（Integration Node IT-5）
 
-- [ ] B4-A 问题状态流转（M08 Issue）
+- [x] B4-A 问题状态流转（M08 Issue）
   - _Branch: feat/m08-issue_
   - _Depends: B3-F_
   - _Integration Node: IT-5_
 
-  - [~] B4-A.1 实现 `CodeIssueStatus` 枚举与 `IssueStateMachine`
+  - [x] B4-A.1 实现 `CodeIssueStatus` 枚举与 `IssueStateMachine`
     - `issue/domain/CodeIssueStatus.java`：6 个状态
     - `issue/domain/IssueStateMachine.java`：`ALLOWED_ISSUE_EDGES` 集合（按 R17.1：NEW→CONFIRMED/FALSE_POSITIVE；CONFIRMED→PENDING_VERIFY/CLOSED；PENDING_VERIFY→CLOSED/REOPENED；CLOSED→REOPENED；REOPENED→CONFIRMED/FALSE_POSITIVE）
     - 提供 `tryTransit(from, to)` 与边集合查询方法（供属性测试使用）
     - _Requirements: R17.1_
 
-  - [~] B4-A.2 实现 `IssueServiceImpl`
+  - [x] B4-A.2 实现 `IssueServiceImpl`
     - `page(IssueQuery)`：按 severity / status / source / filePath 过滤；按 severity 降序、createdAt 升序（R16.2, R16.3）
     - `get(id)`：返回 CodeIssueDTO（包含历史与评论可选 join）
     - `changeStatus(id, request)`：
@@ -937,7 +937,7 @@
     - `addComment(id, content)`：写 issue_comment
     - _Requirements: R17.1, R17.2, R17.3, R17.4, R17.5, R17.6（后者在 B3-F MetricCollector 已落实，本任务保证 status 改为 FALSE_POSITIVE 后立即对下次 evaluate 生效）_
 
-  - [~] B4-A.3 实现 `IssueController`
+  - [x] B4-A.3 实现 `IssueController`
     - `GET /api/v1/review-tasks/{id}/issues`、`GET /api/v1/issues/{id}`、`PATCH /api/v1/issues/{id}/status`、`POST /api/v1/issues/{id}/comments`
     - 全部 `@RequirePermission(projectMember=true)`（projectId 通过 task_id 关联解析）
     - _Requirements: R16.2, R17_
@@ -986,24 +986,24 @@
     - 种子 1 个任务 + 200 个 CodeIssue + 多文件 diff + task_log；调用 `/report` 返回正确聚合；`/logs` 按 stage 过滤
     - _Requirements: R16_
 
-- [ ] B4-C 项目质量看板（M08 Dashboard）
+- [x] B4-C 项目质量看板（M08 Dashboard）
   - _Branch: feat/m08-dashboard_
   - _Depends: B3-F_
   - _Integration Node: IT-5_
 
-  - [~] B4-C.1 实现 Dashboard DTO
+  - [x] B4-C.1 实现 Dashboard DTO
     - `dashboard/dto/{DashboardQuery,QualityTrendDTO,TrendPointDTO,RiskFileDTO}.java`
     - 字段：taskCount、passRate、avgScore、avgDurationSeconds（每日聚合）；RiskFileDTO 含 filePath、issueCount、weightedScore
     - _Requirements: R18.1, R18.3_
 
-  - [~] B4-C.2 实现 `DashboardServiceImpl`
+  - [x] B4-C.2 实现 `DashboardServiceImpl`
     - `trend(projectId, query)`：startDate 与 endDate 跨度 ≤ 365 天，否则 `VALIDATION_ERROR`（R18.2）；按日 GROUP BY 聚合 review_task + gate_result，返回时间序列；optional `branch` 过滤
     - `topRiskFiles(projectId, topN)`：按 file_path 聚合 code_issue（severity 加权：CRITICAL=5, HIGH=3, MEDIUM=2, LOW=1, INFO=0.5）→ 取 TopN
     - `@RequirePermission(projectMember=true)` 由 controller 统一校验
     - 性能：基于近 30 天数据 P95 ≤ 2s；为 review_task(project_id, created_at) 已建索引（V30）
     - _Requirements: R18.1, R18.2, R18.3, R18.4, R18.5_
 
-  - [~] B4-C.3 实现 `DashboardController`
+  - [x] B4-C.3 实现 `DashboardController`
     - `GET /api/v1/dashboard/projects/{id}/quality-trend`、`GET /api/v1/dashboard/projects/{id}/top-risk-files`
     - `@RequirePermission(projectMember=true)`
     - _Requirements: R18.4_
@@ -1017,22 +1017,22 @@
     - 越权：非项目成员调用返回 403
     - _Requirements: R18_
 
-- [ ] B4-D 通知中心（M09 Notification）
+- [x] B4-D 通知中心（M09 Notification）
   - _Branch: feat/m09-notification_
   - _Depends: B3-A, B3-F_
   - _Integration Node: IT-5_
 
-  - [~] B4-D.1 编写 Flyway Migration `V50__m09_notification.sql`
+  - [x] B4-D.1 编写 Flyway Migration `V50__m09_notification.sql`
     - `notification` 表 + `idx_notification_user_read`（按 design §7.2）
     - _Requirements: R19.3, R19.5_
 
-  - [~] B4-D.2 实现 Notification Domain / DTO / Mapper
+  - [x] B4-D.2 实现 Notification Domain / DTO / Mapper
     - `notification/domain/Notification.java`、`notification/dto/{NotificationDTO,NotificationQuery}.java`
     - `notification/repository/NotificationMapper.java`，自定义 SQL：`countUnreadByUser`、`pageByUser(query)`、`markRead(id, userId)`
     - 通知类型枚举：`TASK_PASSED`、`TASK_FAILED_GATE`、`TASK_EXEC_FAILED`、`WAIVER_SUBMITTED`、`WAIVER_APPROVED`、`WAIVER_REJECTED`、`ISSUE_ASSIGNED`
     - _Requirements: R19_
 
-  - [~] B4-D.3 实现 `NotificationServiceImpl`
+  - [x] B4-D.3 实现 `NotificationServiceImpl`
     - `publishTaskStatusChanged(task)`：当 task.status 转为 PASSED / FAILED_GATE / EXECUTION_FAILED → 给任务发起人 + 项目所有 PROJECT_ADMIN 各发一条通知（R19.1）
     - `publishGateWaiverSubmitted(waiver)`：给项目所有 PROJECT_ADMIN 与 REVIEWER 发审批通知（R19.2）；预留 `publishGateWaiverApproved/Rejected`
     - `page(query)`：按 read / type / 分页（R19.3）
@@ -1040,12 +1040,12 @@
     - `archiveOldNotifications`：定时任务（@Scheduled）90 天前未读通知归档（R19.5）
     - _Requirements: R19.1, R19.2, R19.3, R19.4, R19.5_
 
-  - [~] B4-D.4 接入领域事件
+  - [x] B4-D.4 接入领域事件
     - 在 `task` 模块发布 `TaskStatusChangedEvent`（B3-A 已发布或本任务补 publisher）；在 `gate` 模块发布 `GateWaiverSubmittedEvent`（B4-E 完成）
     - `notification/event/NotificationEventListener.java`：`@EventListener` 异步消费，调对应 publish 方法
     - _Requirements: R19.1, R19.2_
 
-  - [~] B4-D.5 实现 `NotificationController`
+  - [x] B4-D.5 实现 `NotificationController`
     - `GET /api/v1/notifications`、`PATCH /api/v1/notifications/{id}/read`、`GET /api/v1/notifications/unread-count`
     - 已登录可见，service 内按当前用户隔离
     - _Requirements: R19.3, R19.4_
@@ -1058,21 +1058,21 @@
     - 模拟 task 终态 → 通知列表出现一条 TASK_PASSED；非本人 markRead 返回 403
     - _Requirements: R19_
 
-- [ ] B4-E 状态回写与门禁豁免（M09 Writeback + M07 Waiver）
+- [x] B4-E 状态回写与门禁豁免（M09 Writeback + M07 Waiver）
   - _Branch: feat/m09-writeback_
   - _Depends: B3-F, B2-A_
   - _Integration Node: IT-5_
 
-  - [~] B4-E.1 编写 Flyway Migration `V51__m07_gate_waiver.sql`
+  - [x] B4-E.1 编写 Flyway Migration `V51__m07_gate_waiver.sql`
     - `gate_waiver` 表 + `idx_gate_waiver_task` + `uk_gate_waiver_active`（按 design §7.2）
     - _Requirements: R15.1, R15.6_
 
-  - [~] B4-E.2 实现 GateWaiver Domain / DTO / Mapper
+  - [x] B4-E.2 实现 GateWaiver Domain / DTO / Mapper
     - `gate/waiver/domain/GateWaiver.java`、`gate/waiver/dto/{GateWaiverSubmitRequest,GateWaiverApproveRequest,GateWaiverDTO}.java`
     - `gate/waiver/repository/GateWaiverMapper.java`，自定义 SQL：`findActiveByTask(taskId)`、`expireOverdue()`
     - _Requirements: R15.1, R15.6_
 
-  - [~] B4-E.3 实现 `GateWaiverServiceImpl`
+  - [x] B4-E.3 实现 `GateWaiverServiceImpl`
     - `submit(taskId, req)`：
       - 校验 task.status=FAILED_GATE（R15.1）；reason ≥ 10 字符（R15.2）；expireAt 必须 future
       - 检查活跃 waiver（PENDING / 未过期 APPROVED）→ 抛 `WAIVER_DUPLICATED`（R15.6）
@@ -1085,13 +1085,13 @@
     - `expireOverdueJob`：定时任务（每 5 分钟），把 expireAt 过期的 PENDING / APPROVED 置 EXPIRED
     - _Requirements: R15.1, R15.2, R15.3, R15.4, R15.5, R15.6_
 
-  - [~] B4-E.4 实现 ProviderClient.postCommitStatus 三实现
+  - [x] B4-E.4 实现 ProviderClient.postCommitStatus 三实现
     - 在 B2-A.3 留白接口上完成：GitHub `POST /repos/{owner}/{repo}/statuses/{sha}`、GitLab `POST /projects/{id}/statuses/{sha}`、Gitee `POST /repos/{owner}/{repo}/statuses/{sha}`
     - 状态映射：PASSED/WAIVED → success；FAILED → failure
     - 描述包含 taskNo、score、failedRules 数量、报告 URL（R20.2）
     - _Requirements: R20.1, R20.2_
 
-  - [~] B4-E.5 实现 `WritebackServiceImpl`
+  - [x] B4-E.5 实现 `WritebackServiceImpl`
     - `writeback(taskId, gateResult)`：
       - 取 RepositoryBinding（解密 accessToken）→ 取 ProviderClient
       - provider 不支持 commit status → 跳过并写 task_log(INFO)（R20.5）
@@ -1100,18 +1100,18 @@
     - 通过 Spring Retry `@Retryable(value=AiServiceUnavailableException.class, maxAttempts=3, backoff=@Backoff(delay=1000, multiplier=5))`
     - _Requirements: R14.6, R14.7, R20.1, R20.3, R20.4, R20.5_
 
-  - [~] B4-E.6 实现 `GateWaiverController`
+  - [x] B4-E.6 实现 `GateWaiverController`
     - `POST /api/v1/review-tasks/{id}/gate-waivers`：`@RequirePermission(projectMember=true)`
     - `POST /api/v1/gate-waivers/{id}/approve`：`@RequirePermission(projectRole={PROJECT_ADMIN,REVIEWER})`
     - `GET /api/v1/review-tasks/{id}/gate-waivers`：列表
     - _Requirements: R15_
 
-  - [~] B4-E.7 在 GateEvaluatingStage 之后挂接 Writeback
+  - [x] B4-E.7 在 GateEvaluatingStage 之后挂接 Writeback
     - 修改 B3-F.5 的 `GateEvaluatingStage.next()`：在 transit 终态后 publish `GateEvaluatedEvent`（包含 taskId、status）
     - `WritebackEventListener`（writeback 模块）：`@EventListener @Async` 接收事件 → 调用 `WritebackService.writeback`
     - _Requirements: R14.6, R20_
 
-  - [~] B4-E.8 提供手动重试回写的接口
+  - [x] B4-E.8 提供手动重试回写的接口
     - `POST /api/v1/review-tasks/{id}/writeback/retry`：`@RequirePermission(projectRole={PROJECT_ADMIN,REVIEWER})`
     - 仅当上次回写状态为失败时允许（通过 task_log 中最近一条 WRITEBACK ERROR 标记位判断）
     - _Requirements: R14.7_
