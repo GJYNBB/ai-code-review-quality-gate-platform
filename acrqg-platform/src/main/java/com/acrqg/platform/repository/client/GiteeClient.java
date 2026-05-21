@@ -3,15 +3,21 @@ package com.acrqg.platform.repository.client;
 import com.acrqg.platform.common.util.JsonUtils;
 import com.acrqg.platform.diff.domain.ChangeType;
 import com.acrqg.platform.repository.domain.Provider;
+import com.acrqg.platform.repository.dto.CommitStatusRequest;
+import com.acrqg.platform.repository.dto.CommitStatusState;
 import com.acrqg.platform.repository.dto.ConnectivityResultDTO;
 import com.acrqg.platform.repository.dto.DiffFetchRequest;
 import com.acrqg.platform.repository.dto.DiffFilePayload;
 import com.acrqg.platform.repository.dto.DiffPayload;
 import com.acrqg.platform.repository.dto.RepositoryTestRequest;
+import com.acrqg.platform.writeback.exception.WritebackException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -158,5 +164,89 @@ public class GiteeClient extends AbstractProviderClient {
             return null;
         }
         return v.asText();
+    }
+
+    // ---------------------------------------------------------------------
+    // postCommitStatus（B4-E.4）
+    // ---------------------------------------------------------------------
+
+    @Override
+    public void postCommitStatus(CommitStatusRequest req, String decryptedToken) {
+        if (req == null) {
+            throw new WritebackException(null, null, 0, "CommitStatusRequest is null");
+        }
+        if (req.commitSha() == null || req.commitSha().isBlank()) {
+            throw new WritebackException(req.provider(), null, 0,
+                    "Gitee postCommitStatus requires commitSha");
+        }
+        final RepoUrlParser.Parsed parsed;
+        try {
+            parsed = RepoUrlParser.parse(req.repoUrl());
+        } catch (IllegalArgumentException ex) {
+            throw new WritebackException(req.provider(), req.commitSha(), 0,
+                    "invalid repoUrl: " + ex.getMessage(), ex);
+        }
+
+        // Gitee API 形式与 GitHub 类似：POST /repos/{owner}/{repo}/statuses/{sha}
+        final String url = API_ROOT + "/repos/" + parsed.owner() + "/" + parsed.repo()
+                + "/statuses/" + req.commitSha();
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("state", toGiteeState(req.state()));
+        if (req.description() != null && !req.description().isEmpty()) {
+            body.put("description", truncate(req.description(), 140));
+        }
+        if (req.targetUrl() != null && !req.targetUrl().isEmpty()) {
+            body.put("target_url", req.targetUrl());
+        }
+        body.put("context", req.context() == null ? "acrqg/quality-gate" : req.context());
+        String json = JsonUtils.toJson(body);
+
+        try {
+            restClient.post()
+                    .uri(url)
+                    .header(HttpHeaders.AUTHORIZATION, "token " + decryptedToken)
+                    .header(HttpHeaders.ACCEPT, "application/json")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(json)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException ex) {
+            throw new WritebackException(req.provider(), req.commitSha(), ex.getStatusCode().value(),
+                    "HTTP " + ex.getStatusCode().value(), ex);
+        } catch (HttpServerErrorException ex) {
+            throw new WritebackException(req.provider(), req.commitSha(), ex.getStatusCode().value(),
+                    "HTTP " + ex.getStatusCode().value(), ex);
+        } catch (ResourceAccessException ex) {
+            throw new WritebackException(req.provider(), req.commitSha(), 0,
+                    "network error: " + (ex.getMessage() == null ? ex.getClass().getSimpleName()
+                            : ex.getMessage()),
+                    ex);
+        } catch (RuntimeException ex) {
+            throw new WritebackException(req.provider(), req.commitSha(), 0,
+                    "postCommitStatus failed: " + (ex.getMessage() == null
+                            ? ex.getClass().getSimpleName() : ex.getMessage()),
+                    ex);
+        }
+    }
+
+    /** Gitee 取值：pending / success / failure / error。 */
+    private static String toGiteeState(CommitStatusState state) {
+        if (state == null) {
+            return "pending";
+        }
+        return switch (state) {
+            case PENDING -> "pending";
+            case SUCCESS -> "success";
+            case FAILURE -> "failure";
+            case ERROR -> "error";
+        };
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) {
+            return null;
+        }
+        return s.length() <= max ? s : s.substring(0, max);
     }
 }

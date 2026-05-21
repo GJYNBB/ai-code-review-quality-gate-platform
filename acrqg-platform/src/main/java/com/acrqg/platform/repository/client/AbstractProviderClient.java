@@ -1,6 +1,5 @@
 package com.acrqg.platform.repository.client;
 
-import com.acrqg.platform.repository.dto.CommitStatusRequest;
 import com.acrqg.platform.repository.dto.ConnectivityResultDTO;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -118,15 +117,5 @@ abstract class AbstractProviderClient implements ProviderClient {
             return t.getClass().getSimpleName();
         }
         return msg;
-    }
-
-    // -----------------------------------------------------------------
-    // postCommitStatus —— 在 B3-C 阶段仍为 UnsupportedOperationException 占位
-    // -----------------------------------------------------------------
-
-    @Override
-    public void postCommitStatus(CommitStatusRequest req, String decryptedToken) {
-        // TODO: B4-E will implement
-        throw new UnsupportedOperationException("postCommitStatus: implemented in B4-E");
     }
 }
