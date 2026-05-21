@@ -11,8 +11,6 @@ import com.acrqg.platform.task.dto.ReviewTaskCreateRequest;
 import com.acrqg.platform.task.dto.ReviewTaskDTO;
 import com.acrqg.platform.task.dto.ReviewTaskQuery;
 import com.acrqg.platform.task.dto.RetryRequest;
-import com.acrqg.platform.task.dto.TaskLogDTO;
-import com.acrqg.platform.task.dto.TaskLogQuery;
 import com.acrqg.platform.task.service.ReviewTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,10 +35,14 @@ import org.springframework.web.bind.annotation.RestController;
  * POST   /api/v1/review-tasks                      已登录（service 内按项目成员校验）
  * GET    /api/v1/review-tasks                      已登录（service 内按项目成员过滤）
  * GET    /api/v1/review-tasks/{id}                 已登录（service 内按项目成员校验）
- * GET    /api/v1/review-tasks/{id}/logs            已登录（service 内按项目成员校验）
  * POST   /api/v1/review-tasks/{id}/retry           已登录（service 内按 REVIEWER/PROJECT_ADMIN 校验）
  * POST   /api/v1/review-tasks/{id}/cancel          已登录（service 内按 PROJECT_ADMIN 校验）
  * </pre>
+ *
+ * <p>{@code GET /api/v1/review-tasks/{id}/logs} 由
+ * {@link com.acrqg.platform.report.controller.ReportController#logs} 承担（B4-B.3）；
+ * {@link com.acrqg.platform.task.service.ReviewTaskService#pageLogs} 服务方法仍保留，
+ * 由 {@code ReportService} 调用。
  *
  * <p>"已登录"语义靠 {@code JwtAuthFilter} 强制；项目成员关系由
  * {@link ReviewTaskService} 在每个方法内部基于任务的 {@code projectId} 实时查询，
@@ -97,14 +99,11 @@ public class ReviewTaskController {
         return ApiResponse.success(reviewTaskService.get(id));
     }
 
-    @Operation(summary = "评审任务流水（task_log）",
-            description = "仅项目成员可访问。支持按 stage / level 过滤；按 created_at DESC 排序。")
-    @GetMapping("/{id}/logs")
-    public ApiResponse<PageResult<TaskLogDTO>> logs(
-            @PathVariable("id") Long id,
-            @Valid @ModelAttribute TaskLogQuery query) {
-        return ApiResponse.success(reviewTaskService.pageLogs(id, query));
-    }
+    // 注：{@code GET /api/v1/review-tasks/{id}/logs} 端点已迁移至
+    // {@link com.acrqg.platform.report.controller.ReportController#logs} (B4-B.3)
+    // —— 二者承担同一报告页用例，原控制器保留路径会导致 Spring "Ambiguous mapping"。
+    // {@link com.acrqg.platform.task.service.ReviewTaskService#pageLogs} 仍由
+    // ReportService 调用，业务行为完全保留。
 
     @Operation(summary = "重试评审任务",
             description = "项目内 REVIEWER 或 PROJECT_ADMIN 可调用；仅终态（PASSED/FAILED_GATE/EXECUTION_FAILED）可重试，"
