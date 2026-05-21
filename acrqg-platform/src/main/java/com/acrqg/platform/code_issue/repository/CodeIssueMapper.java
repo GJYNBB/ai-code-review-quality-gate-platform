@@ -8,9 +8,11 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.SelectProvider;
+import org.apache.ibatis.annotations.Update;
 
 /**
  * 代码问题 Mapper（B3-D / B3-E / B3-F / B4-A 共享）。
@@ -175,4 +177,65 @@ public interface CodeIssueMapper extends BaseMapper<CodeIssue> {
     long countByTaskWithFilter(@Param("taskId") Long taskId,
                                @Param("severityIn") Collection<String> severityIn,
                                @Param("statusNotIn") Collection<String> statusNotIn);
+
+    /**
+     * B4-A.2 列表分页：按任务 + 多值过滤（severity / status / source / filePath / keyword）查询。
+     *
+     * <p>排序：{@code severity_rank ASC, created_at ASC, id ASC}（R16.2：CRITICAL 最高 +
+     * 历史问题排前），与 {@code idx_code_issue_task_severity_source} 索引方向兼容。
+     *
+     * <p>过滤语义：
+     * <ul>
+     *   <li>{@code severityIn} / {@code statusIn}：空 / null 不过滤；非空走 {@code IN (...)}；</li>
+     *   <li>{@code source}：null/空 不过滤；否则 {@code source = ?}；</li>
+     *   <li>{@code filePath}：null/空 不过滤；否则 {@code file_path ILIKE %?%}；</li>
+     *   <li>{@code keyword}：null/空 不过滤；否则按 {@code description / rule_code / file_path}
+     *       任一 ILIKE 模糊匹配（R16.2 "多维度筛选"）。</li>
+     * </ul>
+     *
+     * @param taskId      任务主键，非空
+     * @param severityIn  severity 集合过滤
+     * @param statusIn    status 集合过滤
+     * @param source      source 精确过滤
+     * @param filePath    文件路径模糊
+     * @param keyword     关键字（description / rule_code / file_path 多列模糊）
+     * @param limit       每页条数
+     * @param offset      偏移
+     * @return 当前页问题列表
+     */
+    @SelectProvider(type = CodeIssueSqlProvider.class, method = "pageByTaskWithFilterSql")
+    @ResultMap("codeIssueMap")
+    List<CodeIssue> pageByTaskWithFilter(@Param("taskId") Long taskId,
+                                         @Param("severityIn") Collection<String> severityIn,
+                                         @Param("statusIn") Collection<String> statusIn,
+                                         @Param("source") String source,
+                                         @Param("filePath") String filePath,
+                                         @Param("keyword") String keyword,
+                                         @Param("limit") int limit,
+                                         @Param("offset") int offset);
+
+    /** 与 {@link #pageByTaskWithFilter} 同条件下的总条数。 */
+    @SelectProvider(type = CodeIssueSqlProvider.class, method = "countByTaskWithMultiFilterSql")
+    long countByTaskWithMultiFilter(@Param("taskId") Long taskId,
+                                    @Param("severityIn") Collection<String> severityIn,
+                                    @Param("statusIn") Collection<String> statusIn,
+                                    @Param("source") String source,
+                                    @Param("filePath") String filePath,
+                                    @Param("keyword") String keyword);
+
+    /**
+     * 原子状态更新：仅当 {@code status = #{from}} 时把状态置为 {@code to} 并刷新 updated_at。
+     *
+     * <p>返回 0 表示并发抢占或非法迁移；Service 层应抛 {@code VALIDATION_ERROR}。
+     *
+     * @param id   问题主键
+     * @param from 期望的当前状态
+     * @param to   目标状态
+     * @return 受影响行数（0 / 1）
+     */
+    @Update("UPDATE code_issue SET status = #{to}, updated_at = NOW() "
+            + "WHERE id = #{id} AND status = #{from}")
+    int updateStatusOnlyIfFrom(@Param("id") Long id,
+                               @Param("from") String from,
+                               @Param("to") String to);
 }
