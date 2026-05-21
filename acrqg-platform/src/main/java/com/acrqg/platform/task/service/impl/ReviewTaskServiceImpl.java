@@ -23,6 +23,7 @@ import com.acrqg.platform.task.dto.ReviewTaskQuery;
 import com.acrqg.platform.task.dto.RetryRequest;
 import com.acrqg.platform.task.dto.TaskLogDTO;
 import com.acrqg.platform.task.dto.TaskLogQuery;
+import com.acrqg.platform.task.event.TaskFinishedEvent;
 import com.acrqg.platform.task.repository.ReviewTaskMapper;
 import com.acrqg.platform.task.repository.TaskLogMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -516,6 +517,19 @@ public class ReviewTaskServiceImpl implements com.acrqg.platform.task.service.Re
         if (affected == 0) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR,
                     "status changed concurrently or illegal transition");
+        }
+
+        // 终态发布 TaskFinishedEvent（B4-D 通知 / B4-E 回写订阅）
+        if (target.isTerminal()) {
+            Long triggerUserId = CurrentUserHolder.optional()
+                    .map(AuthenticatedUser::id)
+                    .orElse(null);
+            eventPublisher.publishEvent(new TaskFinishedEvent(
+                    id,
+                    task.getProjectId(),
+                    target,
+                    triggerUserId,
+                    task.getCreatedBy()));
         }
     }
 
