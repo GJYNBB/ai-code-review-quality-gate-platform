@@ -540,28 +540,28 @@
 
 ### B3 — 评审主链路（Integration Node IT-4）
 
-- [ ] B3-A 评审任务核心（M03 任务模型 + 状态机 + Worker 入队）
+- [x] B3-A 评审任务核心（M03 任务模型 + 状态机 + Worker 入队）
   - _Branch: feat/m03-task-core_
   - _Depends: B2-A_
   - _Integration Node: IT-4_
 
-  - [~] B3-A.1 编写 Flyway Migration `V30__m03_review_task.sql`
+  - [x] B3-A.1 编写 Flyway Migration `V30__m03_review_task.sql`
     - `review_task`（含 uk_review_task_no、uk_review_task_triple、idx_review_task_status / project_ts / finished_at）、`task_log` 表（按 design §7.2）
     - `review_task` 的 updated_at 触发器
     - _Requirements: R7.4, R8.3, R9.1, R9.7_
 
-  - [~] B3-A.2 实现 ReviewTask Domain / DTO / Mapper
+  - [x] B3-A.2 实现 ReviewTask Domain / DTO / Mapper
     - `task/domain/{ReviewTask,TaskLog}.java`、`task/dto/{ReviewTaskCreateRequest,ReviewTaskDTO,ReviewTaskQuery,RetryRequest,CancelRequest,TaskLogDTO,TaskLogQuery}.java`
     - `task/repository/{ReviewTaskMapper,TaskLogMapper}.java`，自定义 SQL：`findActiveByTriple`、`updateStatusOnlyIfFrom`（CAS 更新，避免并发覆盖）
     - _Requirements: R7.4, R8.1, R8.2, R8.3, R9.1_
 
-  - [~] B3-A.3 实现 `ReviewTaskStatus` 枚举与状态机定义
+  - [x] B3-A.3 实现 `ReviewTaskStatus` 枚举与状态机定义
     - `task/domain/ReviewTaskStatus.java`：8 个状态枚举
     - `task/domain/StateMachine.java`：`ALLOWED_EDGES` 集合（按 design §6.3.1 状态图：PENDING→FETCHING_DIFF / EXECUTION_FAILED；FETCHING_DIFF→STATIC_SCANNING / EXECUTION_FAILED；…；PASSED / FAILED_GATE / EXECUTION_FAILED → PENDING via retry）
     - `tryTransit(from, to)`：不在 ALLOWED_EDGES 抛 `BusinessException(VALIDATION_ERROR, "illegal transition")`
     - _Requirements: R9.1, R9.3_
 
-  - [~] B3-A.4 实现 `ReviewTaskServiceImpl`
+  - [x] B3-A.4 实现 `ReviewTaskServiceImpl`
     - `create(req, idempotencyKey, trigger)`：
       - 若携带 `Idempotency-Key`，先查 Redis `idem:task:{key}` → 命中则返回缓存的 ReviewTaskDTO（R8.4）
       - 否则按 `(projectId, prId, commitSha)` 三元组查 active task → 命中且非 EXECUTION_FAILED 则按调用入口决定：webhook 直接返回（R7.4）/ 手动接口缺 idempotencyKey 抛 `TASK_DUPLICATED`（R8.3）
@@ -575,14 +575,14 @@
     - `transitTo(id, target)`：StateMachine 校验 + CAS 更新（防止并发跳跃）；落库前后同步阶段日志
     - _Requirements: R7.3, R7.4, R7.6, R8.1, R8.2, R8.3, R8.4, R8.5, R9.2, R9.3, R9.4, R9.5, R9.6, R9.7_
 
-  - [~] B3-A.5 实现 TaskStage 接口与抽象骨架
+  - [x] B3-A.5 实现 TaskStage 接口与抽象骨架
     - `task/worker/TaskStage.java`：`stage()`、`next(StageContext)`、`timeoutSeconds()`
     - `task/worker/StageContext.java`（含 taskId、projectId、attempt、worker 元数据）
     - `task/worker/TaskOrchestrator.java`：从 PENDING 起逐阶段执行，每阶段抛异常 / 超时 → `transitTo(EXECUTION_FAILED)` 并写 task_log（R9.2）；终态写 finishedAt 与 score（score 由 B3-F GateEngine 写入，Orchestrator 读取后回填）
     - 阶段实现类（FetchingDiff / StaticScanning / AiReviewing / GateEvaluating）暂用占位 NOOP 实现，由 B3-C / B3-D / B3-E / B3-F 替换
     - _Requirements: R9.1, R9.2, R9.7, R24.5_
 
-  - [~] B3-A.6 实现 Redis Stream 消费者 `ReviewTaskConsumer`
+  - [x] B3-A.6 实现 Redis Stream 消费者 `ReviewTaskConsumer`
     - 创建 consumer group `review-worker-group`（启动期 idempotent 创建）
     - `pollAndDispatch`：`XREADGROUP` 阻塞拉取（BLOCK 5000ms，COUNT 等于 `review.worker.concurrency`），分发给线程池
     - `review.worker.concurrency` 通过 Redis pub/sub 监听 `param-changed:review.worker.concurrency` 在 60s 内热更新（R24.3）
@@ -590,19 +590,19 @@
     - 仅在 `worker` profile 下注册 Bean（`@Profile("worker")`）
     - _Requirements: R7.6, R9, R24.3, R24.4_
 
-  - [~] B3-A.7 实现 `TaskRecoveryRunner` 启动期断点恢复
+  - [x] B3-A.7 实现 `TaskRecoveryRunner` 启动期断点恢复
     - `ApplicationRunner`，仅 worker profile 下生效
     - 扫描所有 status ∈ {FETCHING_DIFF, STATIC_SCANNING, AI_REVIEWING, GATE_EVALUATING} 的任务 → 调 `transitTo(EXECUTION_FAILED)`，写 task_log（design §16.3 策略 A）
     - _Requirements: R24.4_
 
-  - [~] B3-A.8 实现 `ReviewTaskController`
+  - [x] B3-A.8 实现 `ReviewTaskController`
     - `POST /api/v1/review-tasks`（手动创建，已登录 + 项目成员；CI_CD 角色按 design §8.7 允许）
     - `GET /api/v1/review-tasks`、`GET /api/v1/review-tasks/{id}`、`GET /api/v1/review-tasks/{id}/logs`（`@RequirePermission(projectMember=true)`，service 内按任务 projectId 解析）
     - `POST /api/v1/review-tasks/{id}/retry`、`POST /api/v1/review-tasks/{id}/cancel`
     - 接口需读取 `Idempotency-Key` 头（R8.4）
     - _Requirements: R8, R9, R16.5_
 
-  - [~] B3-A.9 提供 `TaskLogger` 工具类
+  - [x] B3-A.9 提供 `TaskLogger` 工具类
     - `task/log/TaskLogger.java`：`info(taskId, stage, message)` / `warn(...)` / `error(taskId, stage, message, throwable)`，落 `task_log` 表，并 MDC 自动注入 `taskNo`
     - 暴露 Bean 给 B3-C / B3-D / B3-E / B3-F / B4-* 使用
     - _Requirements: R9.7, R24.5_
