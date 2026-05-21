@@ -486,23 +486,23 @@
     - 越权：REVIEWER 调用 `/projects/{id}/repository` 返回 403（design §15.6）
     - _Requirements: R5, R23.1_
 
-- [ ] B2-B 质量门禁配置（M07，仅 CRUD，不含执行引擎）
+- [x] B2-B 质量门禁配置（M07，仅 CRUD，不含执行引擎）
   - _Branch: feat/m07-gate-config_
   - _Depends: B1-C_
   - _Integration Node: IT-3_
 
-  - [~] B2-B.1 编写 Flyway Migration `V21__m07_quality_gate.sql`
+  - [x] B2-B.1 编写 Flyway Migration `V21__m07_quality_gate.sql`
     - `quality_gate`、`gate_rule` 表 + 索引 + `uk_quality_gate_one_enabled` 部分唯一索引（按 design §7.2）
     - 种子模板：在 `quality_gate` 中插入一条系统模板（`enabled=false`、project_id=NULL 不可，因外键，故跳过种子；模板由 service 层 `getDefaultTemplate()` 返回内存对象）
     - _Requirements: R13.1, R13.2, R13.4, R13.5_
 
-  - [~] B2-B.2 实现 Gate Domain / DTO / Mapper
+  - [x] B2-B.2 实现 Gate Domain / DTO / Mapper
     - `gate/domain/{QualityGate,GateRule}.java`
     - `gate/dto/{GateRuleDTO,QualityGateSaveRequest,QualityGateDTO}.java`，按 design §8.4 配 Bean Validation
     - `gate/repository/{QualityGateMapper,GateRuleMapper}.java`
     - _Requirements: R13.1, R13.2_
 
-  - [~] B2-B.3 实现 `QualityGateService`：保存、查询、模板
+  - [x] B2-B.3 实现 `QualityGateService`：保存、查询、模板
     - `save(projectId, request)`：校验每条 rule 的 metric / operator / severity 取自合法集合，否则抛 `GATE_RULE_INVALID` 并在 details 指出索引；事务内将旧版本 `enabled=false`，插入新版本 version+1, enabled=true；批量插 gate_rule
     - `getEnabled(projectId)`：返回 enabled=true 的版本与其规则
     - `listVersions(projectId)`、`getVersion(gateId)`
@@ -510,7 +510,7 @@
     - 写审计：`QUALITY_GATE_SAVED`，detail 中含 version
     - _Requirements: R13.1, R13.2, R13.3, R13.4, R13.5, R13.6_
 
-  - [~] B2-B.4 实现 `QualityGateController`
+  - [x] B2-B.4 实现 `QualityGateController`
     - `POST /api/v1/projects/{id}/quality-gate`：`@RequirePermission(projectRole=PROJECT_ADMIN)`
     - `GET /api/v1/projects/{id}/quality-gate`：`@RequirePermission(projectMember=true)`
     - `GET /api/v1/quality-gates/templates`：已登录可见
