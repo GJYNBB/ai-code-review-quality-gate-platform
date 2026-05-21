@@ -726,43 +726,43 @@
     - _Property: P7_
     - _Requirements: R10.2, R10.3_
 
-- [ ] B3-D 静态扫描适配（M05）
+- [x] B3-D 静态扫描适配（M05）
   - _Branch: feat/m05-scanner_
   - _Depends: B3-C, B1-D_
   - _Integration Node: IT-4_
 
-  - [~] B3-D.1 实现 `StaticScannerAdapter` 接口与 `SeverityMapper`
+  - [x] B3-D.1 实现 `StaticScannerAdapter` 接口与 `SeverityMapper`
     - `scanner/adapter/StaticScannerAdapter.java`：`name()`、`supportedLanguages()`、`isAvailable()`、`scan(ScanContext)`
     - `scanner/adapter/ScanContext.java`（task、changedFiles、workdir、scannerConfig）
     - `scanner/SeverityMapper.java`：按 design §11.2 的映射表把工具原始 severity 归一化为 `CRITICAL/HIGH/MEDIUM/LOW/INFO`；未知 → `INFO` + 打 WARN 日志
     - _Requirements: R11.2, R11.3_
 
-  - [~] B3-D.2 实现 `ScannerProcessRunner` 与四个扫描器实现
+  - [x] B3-D.2 实现 `ScannerProcessRunner` 与四个扫描器实现
     - `scanner/process/ScannerProcessRunner.java`：基于 `ProcessBuilder` 执行命令，超时 60s，捕获 stdout/stderr；支持 `{workdir}`/`{file}` 占位符替换；可选 docker exec 模式（系统参数 `scanner.runner.mode=docker` 时启用）
     - 四个 Adapter（`scanner/adapter/{CheckstyleScanner,EsLintScanner,PylintScanner,SemgrepScanner}.java`）：从 `scanner_config` 读取 command 模板；调用 ScannerProcessRunner；调用对应 ResultParser 转为 List<CodeIssue>
     - 四个 ResultParser（`scanner/parser/{CheckstyleXmlParser,EsLintJsonParser,PylintJsonParser,SemgrepJsonParser}.java`）：将原始 XML/JSON 反序列化并按 SeverityMapper 归一化
     - `isAvailable`：执行 `--version` 探测；若失败返回 false 并写 INFO 日志（不阻塞其他扫描器）
     - _Requirements: R11.1, R11.2, R11.3, R11.4_
 
-  - [~] B3-D.3 实现 `ScannerOrchestrator`
+  - [x] B3-D.3 实现 `ScannerOrchestrator`
     - 取 task → project.language → 选择 supportedLanguages 包含 language 的 adapters + Semgrep（通用安全）
     - 仅传入 `diff_file` 中 oversized=false 的变更文件路径（R11.5）
     - `parallelStream()` 调每个 adapter；任一异常 → `taskLogger.warn` 记录后 `Stream.empty()`，不影响其他（R11.4）
     - 批量持久化 CodeIssue（source=SAST、status=NEW），事务一次提交
     - _Requirements: R11.1, R11.2, R11.4, R11.5_
 
-  - [~] B3-D.4 实现 `code_issue` 表 Migration `V32__m05_code_issue.sql`
+  - [x] B3-D.4 实现 `code_issue` 表 Migration `V32__m05_code_issue.sql`
     - `code_issue`、`issue_history`、`issue_comment` 表 + 全部索引（design §7.2）
     - 注意：与 B4-A 的 issue 模块共享此表；在 B3-D 的 V32 中创建一次，B4-A 不再重复创建（仅追加 service / controller）
     - _Requirements: R11.2, R16.2, R17_
 
-  - [~] B3-D.5 实现 CodeIssue Domain / DTO / Mapper（共用）
+  - [x] B3-D.5 实现 CodeIssue Domain / DTO / Mapper（共用）
     - `issue/domain/{CodeIssue,IssueHistory,IssueComment}.java`、`issue/dto/{CodeIssueDTO,IssueQuery,IssueStatusChangeRequest,IssueCommentDTO}.java`
     - `issue/repository/{CodeIssueMapper,IssueHistoryMapper,IssueCommentMapper}.java`
     - 提供给 B3-D（写入 SAST 问题）、B3-E（写入 AI 问题）、B3-F（聚合查询）、B4-A（状态流转）共用
     - _Requirements: R11.2, R12.3, R16.2, R17_
 
-  - [~] B3-D.6 实现 `StaticScanningStage`（替换占位）
+  - [x] B3-D.6 实现 `StaticScanningStage`（替换占位）
     - `stage()=STATIC_SCANNING`，`next()`：调 ScannerOrchestrator.scan；返回 AI_REVIEWING
     - _Requirements: R9.1, R11_
 
@@ -776,12 +776,12 @@
     - 单扫描器失败：故意把 command 改为不存在的二进制，断言其他扫描器仍执行
     - _Requirements: R11.1, R11.4, R11.5_
 
-- [ ] B3-E AI 辅助评审（M06）
+- [x] B3-E AI 辅助评审（M06）
   - _Branch: feat/m06-ai_
   - _Depends: B3-C, B1-D_
   - _Integration Node: IT-4_
 
-  - [~] B3-E.1 实现 `SensitiveFilter`
+  - [x] B3-E.1 实现 `SensitiveFilter`
     - `ai/filter/SensitiveFilter.java` 接口：`filter(AiReviewPayload raw)` → `FilteredPayload`
     - `ai/filter/DefaultSensitiveFilter.java`：
       - 路径白名单：`.env`、`*.env.*`、`*.pem`、`*.key`、`*.crt`、`*.p12`、`*.jks`、`secrets/**`、`config/secret-*` 整文件跳过
@@ -790,19 +790,19 @@
     - 工具：`anyHit(raw)`、`hash(payload)`
     - _Requirements: R12.2, R23.4_
 
-  - [~] B3-E.2 实现 `AiReviewClient` 与 JSON Schema 校验
+  - [x] B3-E.2 实现 `AiReviewClient` 与 JSON Schema 校验
     - `ai/client/AiReviewClient.java`、`ai/client/HttpAiReviewClient.java`：`RestClient` 调用 OpenAI 兼容 `/v1/chat/completions`，超时由 `ai.review.timeout.seconds`（默认 60）控制；4xx 抛 `BusinessException`，5xx / 超时抛 `AiServiceUnavailableException`
     - apiKey 通过 `AdminService.decryptModelApiKey(modelId)` 取得
     - `ai/schema/AiReviewSchemaValidator.java`：使用 `networknt/json-schema-validator`，校验响应符合 design §12.2 schema；不通过 → 抛 `SchemaValidationException`
     - JSON Schema 文件：`src/main/resources/ai/review-response.schema.json`
     - _Requirements: R12.1, R12.3, R12.4, R12.5_
 
-  - [~] B3-E.3 实现 Prompt 模板与上下文构造
+  - [x] B3-E.3 实现 Prompt 模板与上下文构造
     - `ai/prompt/PromptBuilder.java`：按 design §12.1 模板构造 system + user 两段；注入 language、metrics 列表、fileList、filteredDiff
     - 限制单次 payload ≤ 模型 max_tokens（按系统参数 `ai.review.maxInputChars` 截断）
     - _Requirements: R12.1_
 
-  - [~] B3-E.4 实现 `AiReviewService.execute(taskId)`（含降级）
+  - [x] B3-E.4 实现 `AiReviewService.execute(taskId)`（含降级）
     - 流程：取 task + diff → 取 enabled model_config → SensitiveFilter.filter → PromptBuilder.build → AiReviewClient.review
     - 异常处理：
       - `SensitiveFilterFailureException` → 中止 AI 调用，写 task_log(ERROR)，gate_result.summary.aiAvailable=false（R12.2）
@@ -812,11 +812,11 @@
     - 计算 ai_risk_score（design §12.5 公式）并写入 `gate_result_summary` 缓存（在 B3-F 实现 gate_result 表，本任务先暂存到 task 元数据 JSONB 或新增 `ai_risk_score` 字段，由 B3-F 在 evaluate 时一并消费；推荐：在 task_log 中写 `score=ai_risk_score` 的结构化条目，B3-F 直接读取最新的）
     - _Requirements: R12.1, R12.2, R12.3, R12.4, R12.5, R12.6_
 
-  - [~] B3-E.5 实现 `AiReviewingStage`（替换占位）
+  - [x] B3-E.5 实现 `AiReviewingStage`（替换占位）
     - `stage()=AI_REVIEWING`，`next()`：调 `aiReviewService.execute(taskId)`；任一降级路径都返回 `GATE_EVALUATING`（不抛异常）；仅在不可恢复内部错误时抛异常（R12.5）
     - _Requirements: R9.1, R12.5_
 
-  - [~] B3-E.6 实现 `AiServiceHealthIndicator`（替换 B0-A.13 占位）
+  - [x] B3-E.6 实现 `AiServiceHealthIndicator`（替换 B0-A.13 占位）
     - 周期性（30s）调用 enabled model 的轻量探活 endpoint；缓存结果；`/health` 中暴露 `aiService` 子组件
     - _Requirements: R24.6_
 
