@@ -839,22 +839,22 @@
     - _Property: P5_
     - _Requirements: R12.2, R23.3, R23.4_
 
-- [ ] B3-F 质量门禁规则引擎与判定（M07）
+- [x] B3-F 质量门禁规则引擎与判定（M07）
   - _Branch: feat/m07-gate-engine_
   - _Depends: B3-D, B3-E, B2-B_
   - _Integration Node: IT-4_
 
-  - [~] B3-F.1 编写 Flyway Migration `V33__m07_gate_result.sql`
+  - [x] B3-F.1 编写 Flyway Migration `V33__m07_gate_result.sql`
     - `gate_result` 表（含 uk_gate_result_task、idx_gate_result_status，按 design §7.2）
     - _Requirements: R14.3, R14.4, R14.5, R14.8_
 
-  - [~] B3-F.2 实现 GateResult Domain / DTO / Mapper
+  - [x] B3-F.2 实现 GateResult Domain / DTO / Mapper
     - `gate/domain/{GateResult,GateResultStatus,RuleEval}.java`
     - `gate/dto/{GateResultDTO,RuleEvalDTO}.java`
     - `gate/repository/GateResultMapper.java`
     - _Requirements: R14.3, R14.4, R14.8_
 
-  - [~] B3-F.3 实现 6 个 MetricCollector
+  - [x] B3-F.3 实现 6 个 MetricCollector
     - `gate/collector/CriticalIssueCountCollector.java`：按 design §10.2 SQL 统计 severity ∈ (CRITICAL,HIGH) 且 status≠FALSE_POSITIVE 的 CodeIssue 数（R14.1, R17.6）
     - `SecurityIssueCountCollector`：rule_code 前缀或正则匹配安全规则（如 Semgrep `security.*`）
     - `TestCoverageCollector`：从 task 元数据或外部 coverage report 读取（占位实现：固定取 75；接受未来扩展）
@@ -864,7 +864,7 @@
     - 全部 `@Component`，由 Spring 注入到 `MetricCollectorRegistry`
     - _Requirements: R14.1, R12.6, R17.6_
 
-  - [~] B3-F.4 实现 `OperatorEvaluator` 与 `GateRuleEngine`
+  - [x] B3-F.4 实现 `OperatorEvaluator` 与 `GateRuleEngine`
     - `gate/engine/DefaultOperatorEvaluator.java`：按 design §10.3 用 BigDecimal 比较 6 种 operator
     - `gate/engine/GateRuleEngine.java`：
       - 取 enabled QualityGate；遍历每条 enabled rule → MetricCollector.collect → OperatorEvaluator.compare
@@ -873,11 +873,11 @@
       - 持久化 GateResult（含 summary：failedRules、passedRules、aiAvailable）
     - _Requirements: R13.6, R14.1, R14.2, R14.3, R14.4, R14.5, R14.8_
 
-  - [~] B3-F.5 实现 `GateEvaluatingStage`（替换占位）
+  - [x] B3-F.5 实现 `GateEvaluatingStage`（替换占位）
     - `stage()=GATE_EVALUATING`，`next()`：调 `gateRuleEngine.evaluate(taskId)`；GateResultStatus.FAILED → 转 FAILED_GATE；PASSED → 转 PASSED；同时回填 review_task.score / ai_available
     - _Requirements: R9.1, R14.3, R14.4_
 
-  - [~] B3-F.6 实现 GateResult 查询接口
+  - [x] B3-F.6 实现 GateResult 查询接口
     - `GET /api/v1/review-tasks/{id}/gate-result`：`@RequirePermission(projectMember=true)`，返回 GateResultDTO（含 failedRules / passedRules 明细）
     - _Requirements: R14.8, R16.1_
 
