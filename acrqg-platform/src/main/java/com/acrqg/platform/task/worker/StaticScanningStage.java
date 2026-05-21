@@ -1,21 +1,27 @@
 package com.acrqg.platform.task.worker;
 
+import com.acrqg.platform.scanner.ScannerOrchestrator;
 import com.acrqg.platform.task.domain.ReviewTaskStatus;
-import com.acrqg.platform.task.log.TaskLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * STATIC_SCANNING 阶段占位实现。
+ * STATIC_SCANNING 阶段实现（B3-D.6）。
  *
- * <p><b>TODO B3-D</b>：本类将由 {@code feat/m05-scanner} 分支替换为
- * {@code ScannerOrchestrator} 真实实现，处理多语言静态扫描（R11）。
+ * <p>调用 {@link ScannerOrchestrator#scan(Long)} 完成多扫描器编排。失败语义：
+ * <ul>
+ *   <li>单扫描器失败已在 {@link ScannerOrchestrator} 内捕获并写 WARN task_log（R11.4）；</li>
+ *   <li>编排器整体抛出的 {@link RuntimeException}（如任务/项目缺失、批量插入失败）
+ *       不被本阶段捕获——交由 {@link TaskOrchestrator} 统一转为 EXECUTION_FAILED。</li>
+ * </ul>
  *
- * <p>当前 NOOP 实现仅写一条 INFO 日志后返回 AI_REVIEWING。
+ * <p>无论扫描出多少 issue，都进入 {@link ReviewTaskStatus#AI_REVIEWING}（R9.1）。
  *
- * <p>Covers: R9.1, R11（占位）。
+ * <p>仅在 {@code worker} profile 下注册 bean。
+ *
+ * <p>Covers: R9.1, R11。
  */
 @Component
 @Profile("worker")
@@ -23,10 +29,10 @@ public class StaticScanningStage implements TaskStage {
 
     private static final Logger log = LoggerFactory.getLogger(StaticScanningStage.class);
 
-    private final TaskLogger taskLogger;
+    private final ScannerOrchestrator scannerOrchestrator;
 
-    public StaticScanningStage(TaskLogger taskLogger) {
-        this.taskLogger = taskLogger;
+    public StaticScanningStage(ScannerOrchestrator scannerOrchestrator) {
+        this.scannerOrchestrator = scannerOrchestrator;
     }
 
     @Override
@@ -36,9 +42,12 @@ public class StaticScanningStage implements TaskStage {
 
     @Override
     public ReviewTaskStatus next(StageContext ctx) {
-        log.debug("StaticScanningStage(NOOP): taskId={} attempt={}", ctx.taskId(), ctx.attempt());
-        taskLogger.info(ctx.taskId(), stage().name(),
-                "STATIC_SCANNING placeholder (B3-D will implement scanner orchestration)");
+        long taskId = ctx.taskId();
+        int inserted = scannerOrchestrator.scan(taskId);
+        if (log.isDebugEnabled()) {
+            log.debug("StaticScanningStage: taskId={} attempt={} insertedIssues={}",
+                    taskId, ctx.attempt(), inserted);
+        }
         return ReviewTaskStatus.AI_REVIEWING;
     }
 }
