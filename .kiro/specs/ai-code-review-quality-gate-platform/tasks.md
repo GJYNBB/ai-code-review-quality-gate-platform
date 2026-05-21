@@ -1,4 +1,4 @@
-# 实现计划（Implementation Plan）
+﻿# 实现计划（Implementation Plan）
 
 - 项目：AI 辅助代码评审与质量门禁平台
 - Feature 名称：`ai-code-review-quality-gate-platform`
@@ -629,12 +629,12 @@
     - _Property: P3_
     - _Requirements: R7.4, R8.3_
 
-- [ ] B3-B Webhook 接入（M03）
+- [x] B3-B Webhook 接入（M03）
   - _Branch: feat/m03-webhook_
   - _Depends: B3-A_
   - _Integration Node: IT-4_
 
-  - [~] B3-B.1 实现 Webhook 签名校验器（GitHub / GitLab / Gitee）
+  - [x] B3-B.1 实现 Webhook 签名校验器（GitHub / GitLab / Gitee）
     - `webhook/verifier/SignatureVerifier.java` 接口：`verify(secret, body, headers)`
     - `GithubSignatureVerifier`：`X-Hub-Signature-256`，HMAC-SHA256，使用 `MessageDigest.isEqual` 恒定时间比较
     - `GitlabSignatureVerifier`：`X-Gitlab-Token`（直接相等比较，因 GitLab 用明文 token）
@@ -642,12 +642,12 @@
     - `webhook/verifier/SignatureVerifierFactory.java`
     - _Requirements: R7.1, R7.2, R23.3_
 
-  - [~] B3-B.2 实现 `WebhookEventParser`
+  - [x] B3-B.2 实现 `WebhookEventParser`
     - 解析 GitHub / GitLab / Gitee 三种 payload，统一抽出：provider、repositoryId、repoUrl、eventId、prId、commitSha、sourceBranch、targetBranch、eventType（`PR_OPENED`、`PR_SYNC`、`PUSH`、`PING`、`OTHER`）
     - 不支持的事件类型返回 `eventType=OTHER` 标记
     - _Requirements: R7.3, R7.5_
 
-  - [~] B3-B.3 实现 `WebhookServiceImpl`
+  - [x] B3-B.3 实现 `WebhookServiceImpl`
     - `handle(provider, headers, rawBody)`：
       - 解析 repoUrl → 查 RepositoryBinding → 取 webhookSecret 解密 → 调 SignatureVerifier；失败抛 `WEBHOOK_SIGNATURE_INVALID`（R7.2）
       - eventType ∈ {PING, OTHER} 返回 `{ignored:true}`，不创建任务（R7.5）
@@ -657,7 +657,7 @@
     - 整体流程必须在 3s 内返回（R7.6）；耗时操作（实际任务执行）由 Stream 异步消费
     - _Requirements: R7.1, R7.2, R7.3, R7.4, R7.5, R7.6_
 
-  - [~] B3-B.4 实现 `WebhookController`
+  - [x] B3-B.4 实现 `WebhookController`
     - `POST /api/v1/webhooks/git`：白名单不需 Bearer，但需要校验签名；接收原始 body（`@RequestBody String rawBody`）
     - 通过 `request.getHeader` 取 `X-Hub-Signature-256` 等头；通过查询参数或 path 推断 provider，或在 body 中识别（GitHub 有 `repository.html_url`、GitLab 有 `object_kind` 等）
     - _Requirements: R7.1, R7.6, R23.1_
@@ -670,29 +670,29 @@
     - 使用 GitHub 实际 payload fixture（`tests/resources/webhook/github-pr.json`）+ 计算签名头 → POST 接口创建任务；重复 POST 返回同一 taskId
     - _Requirements: R7_
 
-- [ ] B3-C 代码差异解析（M04）
+- [x] B3-C 代码差异解析（M04）
   - _Branch: feat/m04-diff_
   - _Depends: B3-A, B2-A_
   - _Integration Node: IT-4_
 
-  - [~] B3-C.1 编写 Flyway Migration `V31__m04_diff_file.sql`
+  - [x] B3-C.1 编写 Flyway Migration `V31__m04_diff_file.sql`
     - `diff_file` 表（按 design §7.2，含 uk_diff_file_task_path、idx_diff_file_task）
     - _Requirements: R10.2, R10.3_
 
-  - [~] B3-C.2 实现 Diff Domain / DTO / Mapper
+  - [x] B3-C.2 实现 Diff Domain / DTO / Mapper
     - `diff/domain/{DiffFile,DiffHunk,ChangeType}.java`
     - `diff/dto/{DiffParseResult,ChangedFile,DiffViewDTO,DiffFetchRequest,DiffPayload}.java`
     - `diff/repository/DiffFileMapper.java`，自定义 SQL：`sumByTask(taskId)`、`changedFilesOf(taskId)`
     - _Requirements: R10.2, R10.3_
 
-  - [~] B3-C.3 实现 ProviderClient.fetchDiff（在 B2-A.3 留白接口上完成）
+  - [x] B3-C.3 实现 ProviderClient.fetchDiff（在 B2-A.3 留白接口上完成）
     - GithubClient：`GET /repos/{owner}/{repo}/pulls/{prId}/files`（携带 Bearer token，分页拉取，使用 RestClient）
     - GitlabClient：`GET /projects/{id}/merge_requests/{iid}/changes`
     - GiteeClient：`GET /repos/{owner}/{repo}/pulls/{prId}/files`
     - 统一返回 `DiffPayload`（每文件 path、status、patch 文本）；网络错误 → `DiffFetchException`（包含 commitSha、provider）
     - _Requirements: R10.1, R10.4_
 
-  - [~] B3-C.4 实现 `DiffParserImpl`
+  - [x] B3-C.4 实现 `DiffParserImpl`
     - `parse(taskId)`：
       - 取 task → 取 RepositoryBinding（解密 accessToken）→ 调 `ProviderClient.fetchDiff`
       - 解析 unified diff patch 字符串：每文件抽出 hunks（`@@ -a,b +c,d @@`）→ 计算 addedLines / deletedLines；changeType 由 GitHub `status` 或 patch 头判定
@@ -702,12 +702,12 @@
     - 返回 `DiffParseResult`
     - _Requirements: R10.1, R10.2, R10.3, R10.4, R10.5_
 
-  - [~] B3-C.5 实现 `FetchingDiffStage`（替换 B3-A.5 的占位）
+  - [x] B3-C.5 实现 `FetchingDiffStage`（替换 B3-A.5 的占位）
     - `stage()=FETCHING_DIFF`，`next()`：调 `DiffParserImpl.parse(taskId)`；成功返回 STATIC_SCANNING；失败抛异常（由 Orchestrator 处理）
     - `timeoutSeconds`：默认 120，可读 `system_param.diff.fetch.timeout.seconds`
     - _Requirements: R9.1, R10_
 
-  - [~] B3-C.6 提供 `DiffViewService.diffView(taskId)`（供 B4-B Report 使用）
+  - [x] B3-C.6 提供 `DiffViewService.diffView(taskId)`（供 B4-B Report 使用）
     - 返回每个变更文件的 hunks（含 oldStart、newStart、行级 diff）；预留 `markIssueLines` 钩子（在 B4-B 接入）
     - _Requirements: R16.4_
 
