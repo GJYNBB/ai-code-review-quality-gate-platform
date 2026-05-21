@@ -1,5 +1,9 @@
 package com.acrqg.platform.task.worker;
 
+import com.acrqg.platform.admin.domain.SystemParam;
+import com.acrqg.platform.admin.repository.SystemParamMapper;
+import com.acrqg.platform.ai.service.AiReviewOutcome;
+import com.acrqg.platform.ai.service.AiReviewService;
 import com.acrqg.platform.task.domain.ReviewTaskStatus;
 import com.acrqg.platform.task.log.TaskLogger;
 import org.slf4j.Logger;
@@ -8,15 +12,23 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * AI_REVIEWING 阶段占位实现。
+ * AI_REVIEWING 阶段实现（B3-E.5）。
  *
- * <p><b>TODO B3-E</b>：本类将由 {@code feat/m06-ai} 分支替换为
- * {@code AiReviewService + SensitiveFilter + AiReviewClient} 实现，
- * 处理 AI 评审、Schema 校验、降级路径（R12.1~R12.6）。
+ * <p>调用 {@link AiReviewService#execute(Long)} 完成 AI 评审 + 降级 + 结果写入。
  *
- * <p>当前 NOOP 实现仅写一条 INFO 日志后返回 GATE_EVALUATING。
+ * <p><b>错误处理约定</b>：
+ * AI 阶段的所有异常（敏感过滤失败 / 5xx 超时 / Schema 校验失败 / 模型未配置）
+ * 都已在 {@link AiReviewService} 内部转化为正常 {@link AiReviewOutcome} 返回，
+ * 本类不再 try/catch。即便 service 抛出未预期的 RuntimeException，本类也<b>主动
+ * 吞掉</b>并记 WARN 级 task_log，让任务继续推进至 GATE_EVALUATING（R12.5：AI
+ * 失败不阻塞任务）。这样能保证状态机在 AI 故障下不会陷入 EXECUTION_FAILED。
  *
- * <p>Covers: R9.1, R12（占位）。
+ * <p>{@link #timeoutSeconds()} 读取 {@code ai.review.timeout.seconds}，与
+ * {@link AiReviewService} 内部使用的超时一致；越界 / 缺失退化为 60s 默认值。
+ *
+ * <p>仅在 {@code worker} profile 下注册 bean。
+ *
+ * <p>Covers: R9.1, R12.1, R12.5。
  */
 @Component
 @Profile("worker")
@@ -24,10 +36,22 @@ public class AiReviewingStage implements TaskStage {
 
     private static final Logger log = LoggerFactory.getLogger(AiReviewingStage.class);
 
-    private final TaskLogger taskLogger;
+    /** system_param 中的超时 key（与 AiReviewServiceImpl 保持一致字面量）。 */
+    static final String PARAM_TIMEOUT = "ai.review.timeout.seconds";
 
-    public AiReviewingStage(TaskLogger taskLogger) {
+    /** 默认超时（秒）。 */
+    static final long DEFAULT_TIMEOUT_SECONDS = 60L;
+
+    private final AiReviewService aiReviewService;
+    private final TaskLogger taskLogger;
+    private final SystemParamMapper systemParamMapper;
+
+    public AiReviewingStage(AiReviewService aiReviewService,
+                            TaskLogger taskLogger,
+                            SystemParamMapper systemParamMapper) {
+        this.aiReviewService = aiReviewService;
         this.taskLogger = taskLogger;
+        this.systemParamMapper = systemParamMapper;
     }
 
     @Override
@@ -37,9 +61,43 @@ public class AiReviewingStage implements TaskStage {
 
     @Override
     public ReviewTaskStatus next(StageContext ctx) {
-        log.debug("AiReviewingStage(NOOP): taskId={} attempt={}", ctx.taskId(), ctx.attempt());
-        taskLogger.info(ctx.taskId(), stage().name(),
-                "AI_REVIEWING placeholder (B3-E will implement AI review with degradation)");
+        long taskId = ctx.taskId();
+        try {
+            AiReviewOutcome outcome = aiReviewService.execute(taskId);
+            if (log.isDebugEnabled()) {
+                log.debug("AiReviewingStage: taskId={} aiAvailable={} issues={} score={}",
+                        taskId, outcome.aiAvailable(),
+                        outcome.issuesPersisted(), outcome.aiRiskScore());
+            }
+        } catch (RuntimeException ex) {
+            // R12.5：AI 失败不阻塞任务流转；仅记 WARN 级 task_log
+            taskLogger.warn(taskId, stage().name(),
+                    "ai review unexpected failure (non-blocking): "
+                            + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage()),
+                    ex);
+        }
         return ReviewTaskStatus.GATE_EVALUATING;
+    }
+
+    @Override
+    public long timeoutSeconds() {
+        return readTimeoutSecondsOrDefault();
+    }
+
+    private long readTimeoutSecondsOrDefault() {
+        try {
+            SystemParam sp = systemParamMapper.selectByKey(PARAM_TIMEOUT);
+            if (sp == null || sp.getParamValue() == null) {
+                return DEFAULT_TIMEOUT_SECONDS;
+            }
+            long v = Long.parseLong(sp.getParamValue().trim());
+            if (v <= 0) {
+                return DEFAULT_TIMEOUT_SECONDS;
+            }
+            return v;
+        } catch (RuntimeException ex) {
+            log.warn("AiReviewingStage timeoutSeconds fallback: {}", ex.toString());
+            return DEFAULT_TIMEOUT_SECONDS;
+        }
     }
 }
