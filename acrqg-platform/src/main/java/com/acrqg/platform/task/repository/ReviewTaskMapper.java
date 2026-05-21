@@ -162,4 +162,29 @@ public interface ReviewTaskMapper extends BaseMapper<ReviewTask> {
     @Update("UPDATE review_task SET attempt = attempt + 1, finished_at = NULL, "
             + "started_at = NULL, score = NULL, updated_at = NOW() WHERE id = #{id}")
     int incrementAttempt(@Param("id") Long id);
+
+    /**
+     * 写入 AI 阶段的中间结果（{@code ai_risk_score} / {@code ai_available}）。
+     *
+     * <p>不修改 {@code finished_at} 与 {@code status}（中间态调用）。所有可选字段
+     * 在为 {@code null} 时不覆盖现有值，便于 AI 阶段在不同降级路径下分别回填：
+     * <ul>
+     *   <li>仅设 {@code aiAvailable=false}（敏感过滤失败 / 5xx 超时降级）；</li>
+     *   <li>同时设 {@code aiAvailable=true} + {@code aiRiskScore}（成功路径）。</li>
+     * </ul>
+     *
+     * <p>由 B3-E AiReviewService 调用。
+     *
+     * @return 受影响行数（0 表示任务不存在）
+     */
+    @Update("""
+            UPDATE review_task
+               SET ai_risk_score = COALESCE(#{aiRiskScore}, ai_risk_score),
+                   ai_available  = COALESCE(#{aiAvailable},  ai_available),
+                   updated_at    = NOW()
+             WHERE id = #{id}
+            """)
+    int updateAiResult(@Param("id") Long id,
+                       @Param("aiRiskScore") Integer aiRiskScore,
+                       @Param("aiAvailable") Boolean aiAvailable);
 }
