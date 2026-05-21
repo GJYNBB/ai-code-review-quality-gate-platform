@@ -1,5 +1,6 @@
 package com.acrqg.platform.notification.event;
 
+import com.acrqg.platform.task.event.TaskFinishedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 

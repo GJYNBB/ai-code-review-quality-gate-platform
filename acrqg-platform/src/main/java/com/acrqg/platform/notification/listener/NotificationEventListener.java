@@ -1,7 +1,7 @@
 package com.acrqg.platform.notification.listener;
 
 import com.acrqg.platform.notification.domain.NotificationType;
-import com.acrqg.platform.notification.event.TaskFinishedEvent;
+import com.acrqg.platform.task.event.TaskFinishedEvent;
 import com.acrqg.platform.notification.service.NotificationService;
 import com.acrqg.platform.task.domain.ReviewTaskStatus;
 import java.util.ArrayList;
