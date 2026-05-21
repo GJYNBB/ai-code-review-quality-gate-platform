@@ -2,8 +2,6 @@ package com.acrqg.platform.repository.client;
 
 import com.acrqg.platform.repository.dto.CommitStatusRequest;
 import com.acrqg.platform.repository.dto.ConnectivityResultDTO;
-import com.acrqg.platform.repository.dto.DiffFetchRequest;
-import com.acrqg.platform.repository.dto.DiffPayload;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.time.Duration;
@@ -26,9 +24,11 @@ import org.springframework.web.client.RestClient;
  *       （R5.1 / R24.4）；</li>
  *   <li>把任意 HTTP / 网络异常映射为 {@link ConnectivityResultDTO}，避免子类
  *       重复编写 try-catch 模板代码；</li>
- *   <li>给 {@link ProviderClient#fetchDiff} / {@link ProviderClient#postCommitStatus}
- *       提供"未实现"占位（B3-C / B4-E 完成）。</li>
+ *   <li>给 {@link ProviderClient#postCommitStatus} 提供"未实现"占位（B4-E 完成）。</li>
  * </ul>
+ *
+ * <p>{@link ProviderClient#fetchDiff} 在 B3-C.3 由各子类提供完整实现；
+ * 本基类不再保留占位。
  *
  * <p>Covers: R5.1, R5.2, R10.1, R20.1。
  */
@@ -36,6 +36,9 @@ abstract class AbstractProviderClient implements ProviderClient {
 
     /** 连接 / 读取超时（毫秒）。10s 与 design.md §11 保持一致。 */
     static final int TIMEOUT_MILLIS = 10_000;
+
+    /** {@link #fetchDiff} 单次调用允许的最大分页数；超过即停止并 WARN（防御性兜底）。 */
+    static final int MAX_PAGES = 30;
 
     /** 子类共享的 logger；按子类的 logger name 输出，方便日志检索。 */
     protected final Logger log = LoggerFactory.getLogger(getClass());
@@ -118,14 +121,8 @@ abstract class AbstractProviderClient implements ProviderClient {
     }
 
     // -----------------------------------------------------------------
-    // fetchDiff / postCommitStatus —— 在 B2-A 阶段抛 UnsupportedOperationException
+    // postCommitStatus —— 在 B3-C 阶段仍为 UnsupportedOperationException 占位
     // -----------------------------------------------------------------
-
-    @Override
-    public DiffPayload fetchDiff(DiffFetchRequest req, String decryptedToken) {
-        // TODO: B3-C will implement
-        throw new UnsupportedOperationException("fetchDiff: implemented in B3-C");
-    }
 
     @Override
     public void postCommitStatus(CommitStatusRequest req, String decryptedToken) {
