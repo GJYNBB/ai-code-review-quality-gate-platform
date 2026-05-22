@@ -6,8 +6,35 @@
 
 ## [Unreleased]
 
-### Added
-- 暂无。下一阶段按 [tasks.md](../.kiro/specs/ai-code-review-quality-gate-platform/tasks.md) 中的 B0-B.7（可选 Vitest 骨架测试）与 B5-A（UI-001 ~ UI-010 业务页面）推进。
+### Added — Batch B5-A 业务页面拼装（feat/web-pages）
+
+> 业务页面批次（git 分支 `feat/web-pages`）。在 B0-B Bootstrap 基础上落地 design §5 路由表对应的全部 15 条业务路由 + 通知 / 系统管理页面，与后端 M01 ~ M10 接口完成联调。
+
+#### Wave 1（IT-1 ~ IT-3 节点）
+
+- **B5-A.1** 12 个 axios API 客户端：`src/api/{auth,user,project,repository,reviewTask,issue,report,gate,gateWaiver,dashboard,notification,admin}.ts`，全量 DTO 类型在 `src/types/api.d.ts`，错误码到中文映射在 `src/api/errorCodes.ts` (R1, R3 ~ R22)
+- **B5-A.2** UI-001 登录页 `LoginPage.vue`：表单 + 校验 + 错误码映射（AUTH_INVALID_CREDENTIALS / AUTH_ACCOUNT_DISABLED）+ redirect 跳转 (R1.1, R1.2, R3.2)
+- **B5-A.3** UI-002 工作台 `DashboardPage.vue`：项目选择器 + 4 张统计卡 + 质量趋势折线图（vue-echarts）+ 高风险文件 Top 10；`AppHeader.vue` 全局头部承接项目切换 / 未读通知红点（30s 轮询 `/notifications/unread-count`）/ 用户菜单 (R18, R19, R1.6)
+- **B5-A.4** UI-003 项目列表 `ProjectListPage.vue` + UI-004 项目详情 `ProjectDetailPage.vue`（含基本信息 / 成员 / 仓库三个 Tab） (R4, R6)
+- **B5-A.5** UI-005 仓库绑定 Tab `RepositoryBindingTab.vue`：测试连通性 + 绑定 + Webhook URL 复制 (R5)
+- **B5-A.6** 成员管理 Tab `MemberManageTab.vue`：autocomplete 搜索用户 + 增删 + 角色变更 (R6)
+- **B5-A.7** UI-009 质量门禁 `QualityGatePage.vue`：动态规则表格 + 默认模板 + 历史版本 + 服务端 GATE_RULE_INVALID details 错误标红 (R13)
+- **B5-A.14** Vue Router 路由表对齐 design §5.2，`router/guards.ts` 鉴权 / 角色守卫；`stores/{auth,notification,project}.ts` 状态切片
+
+#### Wave 2（IT-4 ~ IT-5 节点）
+
+- **B5-A.8** UI-006 评审任务列表 `ReviewTaskListPage.vue` + 创建对话框 `CreateTaskDialog.vue`：项目 / 状态多选 / 触发类型 / 时间范围筛选 + 分页表格；创建任务时通过 `Idempotency-Key` 头携带前端生成的 UUID 保证 24h 幂等 (R8.1, R8.2, R8.4)
+- **B5-A.9** UI-007 评审报告 `ReviewReportPage.vue` 4 Tab（概览 / 问题 / 差异 / 日志）+ 通用 `DiffViewer.vue` 组件；顶部按角色 / 状态条件展示 重试 / 取消 / 申请豁免 按钮；申请豁免对话框 reason ≥ 10 字符 + expireAt 必须为未来时间的前端校验 (R9.4, R9.6, R15, R16)
+- **B5-A.10** UI-008 问题详情抽屉 `IssueDetailDrawer.vue`：状态机合法目标过滤（前端常量 `ALLOWED_ISSUE_EDGES` 与后端 `IssueStateMachine.ALLOWED_ISSUE_EDGES` 完全一致）；FALSE_POSITIVE / CLOSED 切换强制 comment.trim().length ≥ 5；评论 + 历史时间线倒序展示 (R17.1 ~ R17.6)
+- **B5-A.11** 通知中心 `NotificationListPage.vue`：read/type 筛选 + 一键已读 + 按 type 跳转评审报告（TASK_FINISHED → 报告页；WAIVER_REQUEST → 报告页 #waiver） (R19)
+- **B5-A.12** 系统管理 5 页面（仅 SYSTEM_ADMIN）：`UserManagePage`（创建 + 启用/禁用） / `ModelConfigPage`（API Key 掩码 + 编辑） / `ScannerConfigPage`（command 占位符 {workdir} {file}） / `SystemParamPage`（敏感参数 ****） / `AuditLogPage`（detail JSON 折叠） (R3, R21, R22, R23.3)
+- **B5-A.13** 门禁豁免审批：`WaiverApprovalDialog.vue` + 在 `ReviewReportPage` 概览 Tab 嵌入豁免列表；PROJECT_ADMIN / REVIEWER / SYSTEM_ADMIN 可对 PENDING 条目 approve/reject（拒绝审批自己提交的申请） (R15.4, R15.5)
+- **B5-A.16** 本 CHANGELOG 与 [docs/frontend.md](../docs/frontend.md)（状态切片 + 组件契约）
+
+### Notes
+- **B5-A.15（前端 Vitest 测试）** 标记为 optional，本批次未交付，由后续独立任务派发。
+- **依赖安装时机**：本批次未在工作流中执行 `npm install`，由 GitHub Actions `frontend-build` job 在 PR 合并时执行 `npm ci`。
+- **TypeScript 5.9 警告**：`@typescript-eslint/typescript-estree` 提示当前 TS 版本超出官方支持范围（>=4.7.4 <5.6.0），仅为兼容性警告，不影响 lint 与构建。
 
 ## [0.1.0-bootstrap] - Batch B0-B 前端基础设施 Bootstrap
 

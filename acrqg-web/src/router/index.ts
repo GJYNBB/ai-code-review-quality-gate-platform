@@ -9,10 +9,15 @@ import { registerRouterGuards } from '@/router/guards'
 import type { Role } from '@/types/api'
 
 /**
- * 路由 meta 类型扩展。
- * - public: 是否为公开页（不需要登录）
- * - requiredRoles: 至少拥有其中一个全局角色才允许访问；空数组表示任意已登录可访问
- * - title: 页面标题
+ * 路由 meta 类型扩展（design §5.2 / §5.4）。
+ *
+ * - public         : 是否为公开页（true 表示无需登录即可访问）
+ * - requiredRoles  : 至少拥有其中一个全局角色才允许访问；空数组表示任意已登录可访问；
+ *                   省略不写表示与空数组等价
+ * - title          : 页面标题（document.title 由 guards.afterEach 写入）
+ *
+ * 项目成员粒度的鉴权（路由表中标注 "项目成员"）由后端在接口层面校验；
+ * 前端路由层只能把关全局角色，进入页面后由组件按返回结果决定可见性。
  */
 declare module 'vue-router' {
     interface RouteMeta {
@@ -23,10 +28,45 @@ declare module 'vue-router' {
     }
 }
 
-// 占位组件：复用 PlaceholderPage 直到对应页面在 B5 接入。
+// 占位组件：B5-A.8~13 尚未实现的页面继续保留占位
 const Placeholder = () => import('@/pages/PlaceholderPage.vue')
 
-// 路由表与 design.md §5.2 对齐：15 条业务路由 + 公开路由 + 异常路由
+// B5-A 已落地的页面（异步懒加载）
+const DashboardPage = () => import('@/pages/dashboard/DashboardPage.vue')
+const ProjectListPage = () => import('@/pages/project/ProjectListPage.vue')
+const ProjectDetailPage = () => import('@/pages/project/ProjectDetailPage.vue')
+const QualityGatePage = () => import('@/pages/project/QualityGatePage.vue')
+const ReviewTaskListPage = () => import('@/pages/review/ReviewTaskListPage.vue')
+const ReviewReportPage = () => import('@/pages/review/ReviewReportPage.vue')
+const NotificationListPage = () => import('@/pages/notification/NotificationListPage.vue')
+const UserManagePage = () => import('@/pages/admin/UserManagePage.vue')
+const ModelConfigPage = () => import('@/pages/admin/ModelConfigPage.vue')
+const ScannerConfigPage = () => import('@/pages/admin/ScannerConfigPage.vue')
+const SystemParamPage = () => import('@/pages/admin/SystemParamPage.vue')
+const AuditLogPage = () => import('@/pages/admin/AuditLogPage.vue')
+
+/**
+ * 路由表对齐 design.md §5.2（15 条业务路由 + 登录 / 403 / 404）：
+ *
+ *  /login                                          公开（BlankLayout）
+ *  /dashboard                                      任意已登录
+ *  /projects                                       任意已登录
+ *  /projects/:projectId                            项目成员（后端校验）
+ *  /projects/:projectId/repository                 PROJECT_ADMIN / SYSTEM_ADMIN
+ *  /projects/:projectId/members                    PROJECT_ADMIN / SYSTEM_ADMIN
+ *  /projects/:projectId/quality-gate               PROJECT_ADMIN / SYSTEM_ADMIN
+ *  /review-tasks                                   任意已登录（按项目筛选）
+ *  /review-tasks/:taskId/report                    项目成员（后端校验）
+ *  /issues/:issueId                                项目成员（后端校验）
+ *  /notifications                                  任意已登录
+ *  /admin/users                                    SYSTEM_ADMIN
+ *  /admin/model-configs                            SYSTEM_ADMIN
+ *  /admin/scanners                                 SYSTEM_ADMIN
+ *  /admin/system-params                            SYSTEM_ADMIN
+ *  /admin/audit-logs                               SYSTEM_ADMIN
+ *  /forbidden                                      公开（BlankLayout）
+ *  /:pathMatch(.*)*                                404（公开）
+ */
 export const routes: RouteRecordRaw[] = [
     // ---------------- 公开路由 ----------------
     {
@@ -65,41 +105,30 @@ export const routes: RouteRecordRaw[] = [
             {
                 path: 'dashboard',
                 name: 'dashboard',
-                component: Placeholder,
-                meta: {
-                    requiredRoles: [],
-                    title: '工作台',
-                    placeholderDescription: 'UI-002 工作台首页将在 B5-A 落地',
-                },
+                component: DashboardPage,
+                meta: { public: false, requiredRoles: [], title: '工作台' },
             },
             {
                 path: 'projects',
                 name: 'project-list',
-                component: Placeholder,
-                meta: {
-                    requiredRoles: [],
-                    title: '项目列表',
-                    placeholderDescription: 'UI-003 项目列表将在 B5-A 落地',
-                },
+                component: ProjectListPage,
+                meta: { public: false, requiredRoles: [], title: '项目列表' },
             },
             {
                 path: 'projects/:projectId',
                 name: 'project-detail',
-                component: Placeholder,
-                meta: {
-                    requiredRoles: [],
-                    title: '项目详情',
-                    placeholderDescription: 'UI-004 项目详情将在 B5-A 落地',
-                },
+                component: ProjectDetailPage,
+                meta: { public: false, requiredRoles: [], title: '项目详情' },
             },
             {
                 path: 'projects/:projectId/repository',
                 name: 'project-repository',
                 component: Placeholder,
                 meta: {
+                    public: false,
                     requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
                     title: '仓库绑定',
-                    placeholderDescription: 'UI-005 仓库绑定将在 B5-A 落地',
+                    placeholderDescription: 'UI-005 仓库绑定（详情页内嵌 RepositoryBindingTab，B5-A.5）',
                 },
             },
             {
@@ -107,39 +136,40 @@ export const routes: RouteRecordRaw[] = [
                 name: 'project-members',
                 component: Placeholder,
                 meta: {
+                    public: false,
                     requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
                     title: '成员管理',
-                    placeholderDescription: 'UI-004 成员管理将在 B5-A 落地',
+                    placeholderDescription: 'UI-004 成员管理（详情页内嵌 MemberManageTab，B5-A.6）',
                 },
             },
             {
                 path: 'projects/:projectId/quality-gate',
                 name: 'project-quality-gate',
-                component: Placeholder,
+                component: QualityGatePage,
                 meta: {
+                    public: false,
                     requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
                     title: '质量门禁',
-                    placeholderDescription: 'UI-009 质量门禁将在 B5-A 落地',
                 },
             },
             {
                 path: 'review-tasks',
                 name: 'review-task-list',
-                component: Placeholder,
+                component: ReviewTaskListPage,
                 meta: {
+                    public: false,
                     requiredRoles: [],
                     title: '评审任务',
-                    placeholderDescription: 'UI-006 评审任务列表将在 B5-A 落地',
                 },
             },
             {
                 path: 'review-tasks/:taskId/report',
                 name: 'review-task-report',
-                component: Placeholder,
+                component: ReviewReportPage,
                 meta: {
+                    public: false,
                     requiredRoles: [],
                     title: '评审报告',
-                    placeholderDescription: 'UI-007 评审报告将在 B5-A 落地',
                 },
             },
             {
@@ -147,59 +177,70 @@ export const routes: RouteRecordRaw[] = [
                 name: 'issue-detail',
                 component: Placeholder,
                 meta: {
+                    public: false,
                     requiredRoles: [],
                     title: '问题详情',
-                    placeholderDescription: 'UI-008 问题详情抽屉将在 B5-A 落地',
+                    placeholderDescription: 'UI-008 问题详情抽屉将在 B5-A.10 落地',
                 },
             },
             {
                 path: 'notifications',
                 name: 'notification-list',
-                component: Placeholder,
+                component: NotificationListPage,
                 meta: {
+                    public: false,
                     requiredRoles: [],
                     title: '通知中心',
-                    placeholderDescription: '通知中心列表将在 B5-A 落地',
                 },
             },
             {
                 path: 'admin/users',
                 name: 'admin-users',
-                component: Placeholder,
+                component: UserManagePage,
                 meta: {
+                    public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '用户管理',
-                    placeholderDescription: 'UI-010 用户管理将在 B5-A 落地',
                 },
             },
             {
                 path: 'admin/model-configs',
                 name: 'admin-model-configs',
-                component: Placeholder,
+                component: ModelConfigPage,
                 meta: {
+                    public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '模型配置',
-                    placeholderDescription: 'UI-010 模型配置将在 B5-A 落地',
                 },
             },
             {
                 path: 'admin/scanners',
                 name: 'admin-scanners',
-                component: Placeholder,
+                component: ScannerConfigPage,
                 meta: {
+                    public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '扫描器配置',
-                    placeholderDescription: 'UI-010 扫描器配置将在 B5-A 落地',
+                },
+            },
+            {
+                path: 'admin/system-params',
+                name: 'admin-system-params',
+                component: SystemParamPage,
+                meta: {
+                    public: false,
+                    requiredRoles: ['SYSTEM_ADMIN'],
+                    title: '系统参数',
                 },
             },
             {
                 path: 'admin/audit-logs',
                 name: 'admin-audit-logs',
-                component: Placeholder,
+                component: AuditLogPage,
                 meta: {
+                    public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '审计日志',
-                    placeholderDescription: 'UI-010 审计日志将在 B5-A 落地',
                 },
             },
         ],
