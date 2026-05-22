@@ -1254,70 +1254,70 @@
 
 ### B6 — 集成验证：性能 / 安全 / 端到端（Integration Node IT-6）
 
-- [ ] B6-A 集成验证与发布前测试
+- [x] B6-A 集成验证与发布前测试
   - _Branch: chore/integration-verification_
   - _Depends: B0-A, B0-B, B1-A, B1-B, B1-C, B1-D, B2-A, B2-B, B3-A, B3-B, B3-C, B3-D, B3-E, B3-F, B4-A, B4-B, B4-C, B4-D, B4-E, B5-A_
   - _Integration Node: IT-6_
 
-  - [~] B6-A.1 编写 k6 性能基准脚本：报告查询
+  - [x] B6-A.1 编写 k6 性能基准脚本：报告查询
     - 文件：`perf/report-query.js`
     - 场景：100 并发持续 5 分钟 GET `/api/v1/review-tasks/{id}/report`，预先种子化 100 个任务，每任务 200 个 issue
     - `thresholds`: `http_req_duration: ['p(95)<2000']`、`http_req_failed: ['rate<0.01']`
     - 输出 HTML 报告到 `perf/output/report-query-{timestamp}.html`
     - _Requirements: R16.6, R24.2_
 
-  - [~] B6-A.2 编写 k6 性能基准脚本：看板查询与任务执行时延
+  - [x] B6-A.2 编写 k6 性能基准脚本：看板查询与任务执行时延
     - `perf/dashboard-trend.js`：50 并发查 30 天看板 P95 ≤ 2s（R18.5）
     - `perf/task-pipeline.js`：模拟 10 并发提交中小型 PR（mock provider + mock AI）→ 测量 PENDING → 终态全链路时长 P95 ≤ 180s（R24.1）
     - _Requirements: R18.5, R24.1, R24.2_
 
-  - [~] B6-A.3 编写自动化越权用例集（design §15.6 表格）
+  - [x] B6-A.3 编写自动化越权用例集（design §15.6 表格）
     - 文件：`src/test/java/com/acrqg/platform/security/AuthorizationMatrixIT.java`
     - `@SpringBootTest` + Testcontainers + 8 行 design 表格全部用例
     - 断言：每行的 expected HTTP 状态与 ApiResponse.code 完全匹配
     - _Requirements: R23.1, R25.5_
 
-  - [~] B6-A.4 编写敏感字段泄露探测测试
+  - [x] B6-A.4 编写敏感字段泄露探测测试
     - 文件：`src/test/java/com/acrqg/platform/security/SensitiveLeakIT.java`
     - 遍历所有控制器响应（通过 mvc + AOP 拦截器）；断言响应 JSON 中不出现 `password / accessToken / apiKey / webhookSecret / accessTokenEncrypted / apiKeyEncrypted` 字段名（或值不为 `****` 之外的形式）
     - _Requirements: R23.2, R23.3, R23.5_
 
-  - [~] B6-A.5 编写端到端 Smoke 测试（覆盖 SD-1 ~ SD-6）
+  - [x] B6-A.5 编写端到端 Smoke 测试（覆盖 SD-1 ~ SD-6）
     - 文件：`src/test/java/com/acrqg/platform/e2e/EndToEndSmokeIT.java`
     - 流程：登录 → 创建项目 → 绑定仓库（mock provider）→ 配置门禁 → 模拟 webhook → 等待任务终态 → 报告可查询 → 状态回写到 mock provider 的 statuses endpoint → 通知列表出现 → 提交豁免 → 审批通过 → 回写 success（描述含"已豁免"）
     - 通过 WireMock 提供 GitHub / OpenAI 兼容 endpoints；通过 Testcontainers 提供 postgres / redis
     - _Requirements: R7, R9, R10, R11, R12, R14, R15, R19, R20_
 
-  - [~] B6-A.6 编写门禁规则引擎独立用例集（R25.3）
+  - [x] B6-A.6 编写门禁规则引擎独立用例集（R25.3）
     - 文件：`src/test/java/com/acrqg/platform/gate/GateRuleEngineMatrixIT.java`
     - 6 metric × 5 operator × {BLOCKER, WARN} = 60 用例（覆盖率门槛要求）
     - 每条用例独立断言 actualValue / passed / score 值
     - _Requirements: R25.3_
 
-  - [~] B6-A.7 编写 AI 降级场景测试（R25.4）
+  - [x] B6-A.7 编写 AI 降级场景测试（R25.4）
     - 文件：`src/test/java/com/acrqg/platform/ai/AiDegradationIT.java`
     - 三类用例：超时（WireMock fixed delay > timeout）、5xx、200 + Schema 校验失败
     - 期望：每类下任务推进到 GATE_EVALUATING（不抛 EXECUTION_FAILED），aiAvailable=false 落 task_log + summary
     - _Requirements: R12.4, R12.5, R25.4_
 
-  - [~] B6-A.8 配置 JaCoCo 覆盖率门槛
+  - [x] B6-A.8 配置 JaCoCo 覆盖率门槛
     - 修改 `pom.xml` `jacoco-maven-plugin`：`<rule>` 设置 `INSTRUCTION` 与 `LINE` 覆盖率最低 0.70；`mvn verify` 时执行 `check`
     - 排除：`infra/log/MaskingLogbackEncoder.java`（低风险纯转发逻辑）、生成代码、配置类
     - 在 CI 中失败时输出未覆盖的 class 列表到 `target/site/jacoco/uncovered.txt`
     - _Requirements: R25.1_
 
-  - [~] B6-A.9 维护 OpenAPI 契约基线
+  - [x] B6-A.9 维护 OpenAPI 契约基线
     - 启动 backend → 抓取 `/v3/api-docs` → 与 `docs/openapi-baseline.json` 对比
     - 文件：`src/test/java/com/acrqg/platform/contract/OpenApiContractIT.java`
     - 不一致时输出 diff，开发需手动审阅并更新 baseline + CHANGELOG
     - _Requirements: R25.2_
 
-  - [~] B6-A.10 启动 / 中断 / 恢复测试
+  - [x] B6-A.10 启动 / 中断 / 恢复测试
     - 文件：`src/test/java/com/acrqg/platform/recovery/WorkerRecoveryIT.java`
     - 流程：启动 worker → 提交 5 个任务 → 在 STATIC_SCANNING 阶段 kill -9 worker → 启动 worker → 5 个任务被 TaskRecoveryRunner 置 EXECUTION_FAILED 且 task_log 含 `task interrupted by worker restart`；不得有任务直接跳到 PASSED
     - _Requirements: R24.4_
 
-  - [~] B6-A.11 整理 IT-6 验收报告
+  - [x] B6-A.11 整理 IT-6 验收报告
     - 输出物：`docs/it6-verification-report.md`
     - 内容：覆盖率统计（≥ 70%）、k6 基准结果（P95 数据）、越权用例矩阵、PBT 8 条属性的 tries 数与通过率、SD-1~SD-6 用例链接
     - _Requirements: R25_
