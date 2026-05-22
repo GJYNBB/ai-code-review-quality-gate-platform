@@ -39,6 +39,11 @@ const QualityGatePage = () => import('@/pages/project/QualityGatePage.vue')
 const ReviewTaskListPage = () => import('@/pages/review/ReviewTaskListPage.vue')
 const ReviewReportPage = () => import('@/pages/review/ReviewReportPage.vue')
 const NotificationListPage = () => import('@/pages/notification/NotificationListPage.vue')
+const UserManagePage = () => import('@/pages/admin/UserManagePage.vue')
+const ModelConfigPage = () => import('@/pages/admin/ModelConfigPage.vue')
+const ScannerConfigPage = () => import('@/pages/admin/ScannerConfigPage.vue')
+const SystemParamPage = () => import('@/pages/admin/SystemParamPage.vue')
+const AuditLogPage = () => import('@/pages/admin/AuditLogPage.vue')
 
 /**
  * 路由表对齐 design.md §5.2（15 条业务路由 + 登录 / 403 / 404）：
@@ -191,56 +196,51 @@ export const routes: RouteRecordRaw[] = [
             {
                 path: 'admin/users',
                 name: 'admin-users',
-                component: Placeholder,
+                component: UserManagePage,
                 meta: {
                     public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '用户管理',
-                    placeholderDescription: 'UI-010 用户管理将在 B5-A.12 落地',
                 },
             },
             {
                 path: 'admin/model-configs',
                 name: 'admin-model-configs',
-                component: Placeholder,
+                component: ModelConfigPage,
                 meta: {
                     public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '模型配置',
-                    placeholderDescription: 'UI-010 模型配置将在 B5-A.12 落地',
                 },
             },
             {
                 path: 'admin/scanners',
                 name: 'admin-scanners',
-                component: Placeholder,
+                component: ScannerConfigPage,
                 meta: {
                     public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '扫描器配置',
-                    placeholderDescription: 'UI-010 扫描器配置将在 B5-A.12 落地',
                 },
             },
             {
                 path: 'admin/system-params',
                 name: 'admin-system-params',
-                component: Placeholder,
+                component: SystemParamPage,
                 meta: {
                     public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '系统参数',
-                    placeholderDescription: 'UI-010 系统参数将在 B5-A.12 落地',
                 },
             },
             {
                 path: 'admin/audit-logs',
                 name: 'admin-audit-logs',
-                component: Placeholder,
+                component: AuditLogPage,
                 meta: {
                     public: false,
                     requiredRoles: ['SYSTEM_ADMIN'],
                     title: '审计日志',
-                    placeholderDescription: 'UI-010 审计日志将在 B5-A.12 落地',
                 },
             },
         ],
