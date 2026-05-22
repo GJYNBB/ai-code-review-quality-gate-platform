@@ -1,0 +1,4 @@
+# Output directory for k6 perf reports (HTML + JSON).
+# k6 will write report-query-*.html / dashboard-trend-*.html / task-pipeline-*.html
+# and *-summary.json files here. Files inside (other than this .gitkeep) are
+# ignored by .gitignore.
