@@ -27,8 +27,8 @@ export const useNotificationStore = defineStore('notification', {
         },
         markRead(id: number) {
             const item = this.items.find((it) => it.id === id)
-            if (item && !item.readFlag) {
-                item.readFlag = true
+            if (item && !item.read) {
+                item.read = true
                 this.unreadCount = Math.max(0, this.unreadCount - 1)
             }
         },

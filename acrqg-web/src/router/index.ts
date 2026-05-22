@@ -23,8 +23,11 @@ declare module 'vue-router' {
     }
 }
 
-// 占位组件：复用 PlaceholderPage 直到对应页面在 B5 接入。
+// 占位组件：B5-A.8~13 尚未实现的页面继续保留占位
 const Placeholder = () => import('@/pages/PlaceholderPage.vue')
+
+// B5-A 已落地的页面（异步懒加载）
+const DashboardPage = () => import('@/pages/dashboard/DashboardPage.vue')
 
 // 路由表与 design.md §5.2 对齐：15 条业务路由 + 公开路由 + 异常路由
 export const routes: RouteRecordRaw[] = [
@@ -65,11 +68,10 @@ export const routes: RouteRecordRaw[] = [
             {
                 path: 'dashboard',
                 name: 'dashboard',
-                component: Placeholder,
+                component: DashboardPage,
                 meta: {
                     requiredRoles: [],
                     title: '工作台',
-                    placeholderDescription: 'UI-002 工作台首页将在 B5-A 落地',
                 },
             },
             {
