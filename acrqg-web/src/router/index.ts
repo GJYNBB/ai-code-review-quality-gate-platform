@@ -38,6 +38,7 @@ const ProjectDetailPage = () => import('@/pages/project/ProjectDetailPage.vue')
 const QualityGatePage = () => import('@/pages/project/QualityGatePage.vue')
 const ReviewTaskListPage = () => import('@/pages/review/ReviewTaskListPage.vue')
 const ReviewReportPage = () => import('@/pages/review/ReviewReportPage.vue')
+const NotificationListPage = () => import('@/pages/notification/NotificationListPage.vue')
 
 /**
  * 路由表对齐 design.md §5.2（15 条业务路由 + 登录 / 403 / 404）：
@@ -180,12 +181,11 @@ export const routes: RouteRecordRaw[] = [
             {
                 path: 'notifications',
                 name: 'notification-list',
-                component: Placeholder,
+                component: NotificationListPage,
                 meta: {
                     public: false,
                     requiredRoles: [],
                     title: '通知中心',
-                    placeholderDescription: '通知中心列表将在 B5-A.11 落地',
                 },
             },
             {
