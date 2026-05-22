@@ -1149,55 +1149,55 @@
 
 > 单一顶层任务 `feat/web-pages` 由 1~2 名 subagent 持续追踪后端落地的里程碑（IT-2 / IT-3 / IT-4 / IT-5），按需拼装 UI-001 ~ UI-010。每个子任务标注其依赖的后端批次。
 
-- [ ] B5-A 前端页面持续集成
+- [x] B5-A 前端页面持续集成
   - _Branch: feat/web-pages_
   - _Depends: B0-B（同时持续追踪 B1 / B2 / B3 / B4）_
   - _Integration Node: IT-2 / IT-3 / IT-4 / IT-5（分阶段验收）_
 
-  - [~] B5-A.1 实现 `src/api/*.ts` 全部 axios 客户端
+  - [x] B5-A.1 实现 `src/api/*.ts` 全部 axios 客户端
     - 按 design.md §5.1 与 §8.7 接口清单实现：`auth.ts`、`user.ts`、`project.ts`、`repository.ts`、`reviewTask.ts`、`issue.ts`、`report.ts`、`gate.ts`、`gateWaiver.ts`、`dashboard.ts`、`notification.ts`、`admin.ts`
     - 与后端 DTO 类型对齐 `src/types/api.d.ts`
     - _Requirements: R1, R3~R22（前端访问层覆盖）_
 
-  - [~] B5-A.2 实现 LoginPage（UI-001）
+  - [x] B5-A.2 实现 LoginPage（UI-001）
     - 表单（用户名 / 密码）+ 调用 `auth.login`；成功后跳转 `redirect` 或 `/dashboard`
     - 错误码 `AUTH_INVALID_CREDENTIALS` / `AUTH_ACCOUNT_DISABLED` 显示对应中文提示
     - _Requirements: R1.1, R1.2, R1.3_
 
-  - [~] B5-A.3 实现 DashboardPage（UI-002）+ 全局头部
+  - [x] B5-A.3 实现 DashboardPage（UI-002）+ 全局头部
     - 调用 `dashboard.trend` + `dashboard.topRiskFiles`（依赖 B4-C）
     - 全局头部：项目切换器、未读通知红点（轮询 `/notifications/unread-count`，30s）、用户菜单（登出）
     - _Requirements: R18, R19_
 
-  - [~] B5-A.4 实现项目相关页面（UI-003 / UI-004）
+  - [x] B5-A.4 实现项目相关页面（UI-003 / UI-004）
     - `ProjectListPage`：列表 + 关键字搜索 + 创建按钮（仅 PROJECT_ADMIN/SYSTEM_ADMIN）
     - `ProjectDetailPage`：项目信息 + 成员列表 + 仓库绑定卡片
     - 依赖 B1-C / B2-A
     - _Requirements: R4, R5, R6_
 
-  - [~] B5-A.5 实现仓库绑定页面（UI-005）
+  - [x] B5-A.5 实现仓库绑定页面（UI-005）
     - `RepositoryBindingPage`：provider 选择 + 仓库 URL + accessToken（密码框）+ webhookSecret + "测试连通性" 按钮 + "保存绑定" 按钮 + 显示生成的 webhookUrl 复制按钮
     - 依赖 B2-A
     - _Requirements: R5_
 
-  - [~] B5-A.6 实现成员管理页面（UI-004 内的成员标签页）
+  - [x] B5-A.6 实现成员管理页面（UI-004 内的成员标签页）
     - `MemberManagePage`：成员列表 + 添加成员对话框（用户搜索 + 角色选择）+ 移除按钮
     - 依赖 B1-C
     - _Requirements: R6_
 
-  - [~] B5-A.7 实现质量门禁配置页面（UI-009）
+  - [x] B5-A.7 实现质量门禁配置页面（UI-009）
     - `QualityGatePage`：动态规则表格（metric / operator / threshold / severity / enabled），支持新增 / 删除 / 排序；保存调用 `gate.saveQualityGate`；"使用模板"按钮加载默认 3 条规则
     - 失败规则的 details 数组在 UI 内联高亮
     - 依赖 B2-B
     - _Requirements: R13_
 
-  - [~] B5-A.8 实现评审任务列表页（UI-006）
+  - [x] B5-A.8 实现评审任务列表页（UI-006）
     - `ReviewTaskListPage`：筛选项目 / 状态 / 触发类型 / 时间范围；分页表格；"创建任务"按钮（CreateTaskDialog）
     - `CreateTaskDialog`：源分支 / 目标分支 / commitSha / prId（至少一项）→ 调 `reviewTask.create`，请求头携带 `Idempotency-Key`（前端 UUID 生成）
     - 依赖 B3-A
     - _Requirements: R8.1, R8.2, R8.4_
 
-  - [~] B5-A.9 实现评审报告页（UI-007）
+  - [x] B5-A.9 实现评审报告页（UI-007）
     - `ReviewReportPage`：4 个 Tab（概览 / 问题列表 / 代码差异 / 执行日志）
     - 概览：调 `report.report`，展示 status / score / 门禁结果 / aiAvailable；可视化 issueCounts 饼图
     - 问题列表：调 `issue.page`，支持 severity / status / source / filePath 筛选；点击进入 `IssueDetailDrawer`
@@ -1207,31 +1207,31 @@
     - 依赖 B3 全部、B4-A、B4-B、B4-E
     - _Requirements: R9.4, R9.6, R15, R16_
 
-  - [~] B5-A.10 实现问题详情抽屉（UI-008）
+  - [x] B5-A.10 实现问题详情抽屉（UI-008）
     - `IssueDetailDrawer.vue`：CodeIssue 详情 + 状态切换下拉 + comment 编辑（FALSE_POSITIVE / CLOSED 校验长度 ≥ 5）+ 评论时间线 + 历史记录
     - 状态切换调 `issue.changeStatus`；DEVELOPER 操作非自身任务时显示后端返回的 `VALIDATION_ERROR`
     - 依赖 B4-A
     - _Requirements: R17_
 
-  - [~] B5-A.11 实现通知中心页面与红点
+  - [x] B5-A.11 实现通知中心页面与红点
     - `NotificationListPage`：分页列表 + read/type 筛选 + 一键已读
     - 头部红点：30s 轮询 unread-count；点击跳通知页
     - 依赖 B4-D
     - _Requirements: R19_
 
-  - [~] B5-A.12 实现系统管理 4 个页面（UI-010）
+  - [x] B5-A.12 实现系统管理 4 个页面（UI-010）
     - `UserManagePage`（B1-A）、`ModelConfigPage`（B1-D）、`ScannerConfigPage`（B1-D）、`AuditLogPage`（B1-B + B1-D）
     - 全部仅 SYSTEM_ADMIN 可见，路由守卫拦截
     - apiKey / webhookSecret 字段始终展示为 `****`
     - _Requirements: R3, R21, R22, R23.3_
 
-  - [~] B5-A.13 实现门禁豁免审批页面（嵌入 ReviewReportPage 或独立 `WaiverApprovalPage`）
+  - [x] B5-A.13 实现门禁豁免审批页面（嵌入 ReviewReportPage 或独立 `WaiverApprovalPage`）
     - 申请表单：reason（≥ 10 字符前端校验）+ expireAt（DatePicker，要求 future）
     - 审批入口：通知点击进入审批页面，approve / reject + 评论
     - 依赖 B4-E
     - _Requirements: R15_
 
-  - [~] B5-A.14 维护 `src/router/index.ts` 路由元信息
+  - [x] B5-A.14 维护 `src/router/index.ts` 路由元信息
     - 完成 design.md §5.2 全部 15 条路由的 `meta.requiredRoles` 配置
     - 路由懒加载 + 错误页（403 forbidden、404 not-found）
     - _Requirements: R2_
@@ -1244,7 +1244,7 @@
     - `tests/unit/NotificationListPage.spec.ts`：未读筛选；markRead
     - _Requirements: R1, R13, R15, R16, R17, R19_
 
-  - [~] B5-A.16 撰写前端 CHANGELOG 与文档
+  - [x] B5-A.16 撰写前端 CHANGELOG 与文档
     - `acrqg-web/CHANGELOG.md` 增量记录每个 IT 节点交付内容
     - `docs/frontend.md`：状态管理切片说明、组件契约
     - _Requirements: —_
