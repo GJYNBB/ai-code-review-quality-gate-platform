@@ -66,6 +66,21 @@ jobs:
           SPRING_PROFILES_ACTIVE: test
         run: mvn -B -ntp -DskipITs=false verify
 
+      - name: Compute uncovered classes (B6-A.8)
+        if: always()
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            mkdir -p target/site/jacoco
+            awk -F',' 'NR>1 && $5+$4>0 && ($4/($4+$5))<0.7 {printf "%s.%s (%.2f%%)\n", $2, $3, ($4/($4+$5))*100}' \
+              target/site/jacoco/jacoco.csv \
+              | sort > target/site/jacoco/uncovered.txt || true
+            echo "::group::Uncovered classes (line coverage < 70%)"
+            cat target/site/jacoco/uncovered.txt || true
+            echo "::endgroup::"
+          else
+            echo "::warning::jacoco.csv not generated; skipping uncovered class report"
+          fi
+
       - name: Upload JaCoCo report
         if: always()
         uses: actions/upload-artifact@v4

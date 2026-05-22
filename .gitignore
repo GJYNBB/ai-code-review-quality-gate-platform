@@ -78,3 +78,7 @@ node_modules/
 # Internal worktree storage
 .worktrees/
 
+
+# ----- k6 perf output (B6-A.1 / B6-A.2) -----
+perf/output/*
+!perf/output/.gitkeep
