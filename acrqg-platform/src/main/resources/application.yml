@@ -1,0 +1,169 @@
+# ============================================================================
+#  AI 辅助代码评审与质量门禁平台 - 公共配置 (application.yml)
+#  Task: B0-A.2  (创建启动类与 Profile 划分)
+#
+#  本文件定义所有 profile 共享的默认值。环境/角色差异在以下文件中按需覆盖：
+#    - application-dev.yml   / application-test.yml / application-prod.yml
+#    - application-api.yml   / application-worker.yml
+#
+#  关联文档:
+#    - design.md §17.2 (配置项与环境变量)
+#    - design.md §17.3 (Profile: dev / test / prod, role: api / worker)
+#    - requirements.md R17.3, R24.6
+# ============================================================================
+
+spring:
+  application:
+    name: acrqg-platform
+
+  # ---- 数据源 (PostgreSQL 15+) ------------------------------------------------
+  # 默认值允许在没有任何环境变量时启动 (用于编译/单元测试)；
+  # 集成测试通过 Testcontainers 动态覆盖；docker-compose 通过 DB_URL 等环境变量注入。
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/quality_gate}
+    username: ${DB_USER:acrqg}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+      # -1 = 不在启动期立即测试连接，避免本地无 DB 时阻塞 ApplicationContext 启动；
+      # 真实连通性问题会在第一次实际取连接时报错。
+      initialization-fail-timeout: -1
+
+  # ---- 缓存 / 异步队列 (Redis 7) ---------------------------------------------
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379/0}
+      timeout: 5s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 0
+
+  # ---- Flyway: 数据库迁移 ---------------------------------------------------
+  # B0-A.10 起开始向 db/migration/ 写入 V*.sql；这里仅声明默认行为，
+  # 测试 profile (application-test.yml) 在没有真实 DB 时关闭 flyway。
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # ---- Jackson ---------------------------------------------------------------
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+
+  # ---- 主线程池 (虚拟线程在生产 profile 视情况开启) -----------------------
+  threads:
+    virtual:
+      enabled: false
+
+# ============================================================================
+#  Web 容器
+# ============================================================================
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: never
+
+# ============================================================================
+#  Actuator / 可观测 (R24.6)
+#  - /actuator/health  : 健康检查 (含 Redis Stream / AI 客户端自定义 indicator)
+#  - /actuator/prometheus 由 micrometer-registry-prometheus 自动暴露
+#  - prod profile 仅保留 health + metrics，不暴露 env / heapdump / threaddump
+# ============================================================================
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# ============================================================================
+#  springdoc-openapi (Swagger UI)
+#  - 默认开启；prod profile 关闭对外暴露 (R23.1)。
+# ============================================================================
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+
+# ============================================================================
+#  日志
+#  - 默认 INFO；dev profile 提升为 DEBUG，prod profile 收紧为 WARN/INFO。
+#  - traceId / taskNo 由 B0-A.8 的 TraceIdFilter + MaskingLogbackEncoder 注入 MDC。
+# ============================================================================
+logging:
+  level:
+    root: INFO
+    com.acrqg: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-}] [%X{taskNo:-}] %logger{36} - %msg%n"
+
+# ============================================================================
+#  应用自有命名空间 (app.*)
+#  这些键在后续任务 (B0-A.4 JWT, B0-A.5 加密, B3-* AI / Webhook) 中绑定到
+#  @ConfigurationProperties bean。此处仅声明默认值与占位符。
+# ============================================================================
+app:
+  # 服务身份：api 或 worker；由 application-api.yml / application-worker.yml 覆盖。
+  role: ${APP_ROLE:api}
+
+  security:
+    jwt:
+      secret: ${JWT_SECRET:please-change-me-32-bytes-minimum-secret-key-for-jwt-hmac-signing}
+      access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:7200}
+      refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:604800}
+    # AES-GCM 派生主密钥 (R5.3 / R21.1 / R23.2)。生产环境必须通过 TOKEN_ENCRYPTION_KEY
+    # 环境变量注入；默认值仅用于本地开发，绝不可用于生产。
+    token-encryption-key: ${TOKEN_ENCRYPTION_KEY:dev-change-me-32-bytes-token-encryption-key!!}
+
+  review:
+    worker:
+      # 单 JVM 内 Redis Stream 消费者线程数 (R21.4 / R24.3)；范围 1..32，
+      # 实际校验在 B1-D 系统参数模块完成；这里仅提供启动期初值。
+      concurrency: ${REVIEW_WORKER_CONCURRENCY:4}
+
+  ai:
+    review:
+      # 单次 AI 调用超时秒数 (R12.5 / R21.4)；超时即触发降级。
+      timeout-seconds: ${AI_REVIEW_TIMEOUT_SECONDS:60}
+      # AI 服务 baseUrl；空字符串表示未配置 -> 视为 AI 不可用，任务直接降级。
+      base-url: ${AI_REVIEW_BASE_URL:}
+
+  webhook:
+    # Webhook 签名头名 (R7.1 / 17.2)；GitHub/Gitee 默认为 X-Hub-Signature-256，
+    # GitLab 使用 X-Gitlab-Token 时由 provider-specific 解析器单独处理。
+    signature-header: ${WEBHOOK_SIGNATURE_HEADER:X-Hub-Signature-256}
+    # 平台对外 base URL（R5.5）；RepositoryServiceImpl 拼接 /api/v1/webhooks/git
+    # 后落库到 repository_binding.webhook_url。生产环境应配置为公网可达的 HTTPS 域名。
+    base-url: ${WEBHOOK_BASE_URL:https://localhost:8080}
+
+  # CORS 配置由各 profile 覆盖；这里给出空值占位，便于 @ConfigurationProperties 绑定。
+  cors:
+    allowed-origins: ""

@@ -1,0 +1,180 @@
+# =============================================================================
+# AI 辅助代码评审与质量门禁平台 — 本地 / 默认 prod 编排
+# Task:        B0-A.11
+# Requirement: R24.6
+# Design:      design.md §17.1 / §17.2 / §17.3
+#
+# 服务清单：
+#   - postgres:15-alpine    主存储（Flyway 由 backend 启动时执行迁移）
+#   - redis:7-alpine        异步队列 / 黑名单 / 幂等 / 限流
+#   - backend               Spring Boot API（profile=prod,api）
+#   - worker                Spring Boot Worker（profile=prod,worker，与 backend 同 jar）
+#   - frontend              占位 nginx；待 B0-B.6 完成后切换 build context 到 ./acrqg-web
+#
+# 所有 ${VAR:-default} 默认值均仅供本地开发；生产部署须在 .env 中显式覆盖。
+# =============================================================================
+
+version: "3.9"
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 15
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: acrqg-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: quality_gate
+      POSTGRES_USER: ${DB_USER:-acrqg}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-acrqg-dev-password}
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-acrqg} -d quality_gate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - acrqg-net
+
+  # ---------------------------------------------------------------------------
+  # Redis 7（开启 AOF 持久化，适配 Stream / 黑名单需要）
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: acrqg-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - acrqg-net
+
+  # ---------------------------------------------------------------------------
+  # Backend API（Spring Boot，profile=prod,api）
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./acrqg-platform
+      dockerfile: Dockerfile
+    image: acrqg/backend:0.1.0-SNAPSHOT
+    container_name: acrqg-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      SPRING_PROFILES_ACTIVE: prod,api
+      DB_URL: jdbc:postgresql://postgres:5432/quality_gate
+      DB_USER: ${DB_USER:-acrqg}
+      DB_PASSWORD: ${DB_PASSWORD:-acrqg-dev-password}
+      REDIS_URL: redis://redis:6379/0
+      AI_REVIEW_BASE_URL: ${AI_REVIEW_BASE_URL:-}
+      AI_REVIEW_TIMEOUT_SECONDS: ${AI_REVIEW_TIMEOUT_SECONDS:-60}
+      WEBHOOK_SIGNATURE_HEADER: ${WEBHOOK_SIGNATURE_HEADER:-X-Hub-Signature-256}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-dev-change-me-32-bytes-token-encryption-key!!}
+      JWT_SECRET: ${JWT_SECRET:-please-change-me-32-bytes-minimum-secret-key-for-jwt-hmac-signing}
+      JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-7200}
+      JWT_REFRESH_TTL_SECONDS: ${JWT_REFRESH_TTL_SECONDS:-604800}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - acrqg-net
+
+  # ---------------------------------------------------------------------------
+  # Worker（同一 jar；profile=prod,worker；只消费 Redis Stream）
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: ./acrqg-platform
+      dockerfile: Dockerfile
+    image: acrqg/backend:0.1.0-SNAPSHOT
+    container_name: acrqg-worker
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      SPRING_PROFILES_ACTIVE: prod,worker
+      DB_URL: jdbc:postgresql://postgres:5432/quality_gate
+      DB_USER: ${DB_USER:-acrqg}
+      DB_PASSWORD: ${DB_PASSWORD:-acrqg-dev-password}
+      REDIS_URL: redis://redis:6379/0
+      AI_REVIEW_BASE_URL: ${AI_REVIEW_BASE_URL:-}
+      AI_REVIEW_TIMEOUT_SECONDS: ${AI_REVIEW_TIMEOUT_SECONDS:-60}
+      REVIEW_WORKER_CONCURRENCY: ${REVIEW_WORKER_CONCURRENCY:-4}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-dev-change-me-32-bytes-token-encryption-key!!}
+      JWT_SECRET: ${JWT_SECRET:-please-change-me-32-bytes-minimum-secret-key-for-jwt-hmac-signing}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - acrqg-net
+
+  # ---------------------------------------------------------------------------
+  # Frontend（占位）
+  #   - 真正的前端镜像由 B0-B.6 在 acrqg-web/Dockerfile 中实现；
+  #   - 现使用 nginx 作为占位以打通 IT-1 端到端 smoke：访问 http://localhost/ 应 200。
+  #   - B0-B 合并 develop 后将 build context 切换到 ./acrqg-web。
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: nginx:1.25-alpine
+    container_name: acrqg-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - acrqg-net
+
+# -----------------------------------------------------------------------------
+# 持久卷与网络
+# -----------------------------------------------------------------------------
+volumes:
+  pgdata:
+    name: acrqg-pgdata
+  redisdata:
+    name: acrqg-redisdata
+
+networks:
+  acrqg-net:
+    name: acrqg-net
+    driver: bridge

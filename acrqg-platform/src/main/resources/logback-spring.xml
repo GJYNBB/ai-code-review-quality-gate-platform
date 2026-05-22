@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Logback configuration for acrqg-platform
+    Task: B0-A.8 (TraceId + JSON 日志)
+    Covers: R23.3 (敏感字段脱敏), R24.5 (按 traceId 串联请求链路)
+
+    设计要点：
+      - dev / test / 默认 profile：使用纯文本控制台输出，方便本机调试；
+        pattern 中通过 %X{traceId:-} / %X{taskNo:-} 注入 MDC，由
+        infra.log.TraceIdFilter (HTTP) 与 task.worker (Stream) 维护。
+      - prod profile：使用 com.acrqg.platform.infra.log.MaskingLogbackEncoder
+        输出 JSON 行，字段名通过 <fieldNames> 自定义。MaskingLogbackEncoder
+        继承 net.logstash.logback.encoder.LogstashEncoder（logstash-logback-encoder
+        7.x），所有 LogstashEncoder 的子元素（includeMdcKeyName / fieldNames
+        / customFields / 等）均可使用。
+      - <includeMdcKeyName> 列表锁定 traceId、taskNo、userId 三个字段；
+        其它 MDC 键不会被序列化，避免无意泄漏（白名单策略）。
+-->
+<configuration scan="false">
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- ================================================================
+         dev / test / 默认 profile：控制台文本日志
+         ================================================================ -->
+    <springProfile name="dev,test,default">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-}] [%X{taskNo:-}] %logger{36} - %msg%n</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <logger name="com.acrqg" level="INFO"/>
+    </springProfile>
+
+    <!-- ================================================================
+         prod profile：JSON 日志 + 字段级脱敏
+         ================================================================ -->
+    <springProfile name="prod">
+        <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="com.acrqg.platform.infra.log.MaskingLogbackEncoder">
+                <!-- MDC 白名单 -->
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>taskNo</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+
+                <!-- JSON 字段名 -->
+                <fieldNames>
+                    <timestamp>@timestamp</timestamp>
+                    <message>message</message>
+                    <level>level</level>
+                    <logger>logger</logger>
+                    <thread>thread</thread>
+                    <stackTrace>stack_trace</stackTrace>
+                </fieldNames>
+
+                <!-- 时区与时间戳格式 -->
+                <timeZone>Asia/Shanghai</timeZone>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+
+        <logger name="com.acrqg" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+    </springProfile>
+
+</configuration>
