@@ -229,12 +229,20 @@ k6 run -e TIMESTAMP=$TS -e PROJECT_ID=1 -e WEBHOOK_SECRET=mock-secret perf/task-
 
 ## 11. 已知问题与跟进项
 
-### 11.1 Collector 占位实现
+### 11.1 Collector 真实接入（M11，已交付）
 
-| Collector | 状态 | 备注 |
+| Collector | 状态 | 数据源 |
 |---|---|---|
-| `TestCoverageCollector` | 占位返回 0 | 未接入实际 JaCoCo 报告解析；后续 M11 接入 |
-| `DuplicateRateCollector` | 占位返回 0 | 未接入 PMD-CPD / Simian；后续 M11 接入 |
+| `TestCoverageCollector` | ✅ 已接入 JaCoCo CSV | `system_param.gate.test_coverage.report.dir` 默认 `reports/coverage`；按 `{dir}/task-{taskId}/jacoco.csv` 约定读取，缺失时退化到 `system_param.gate.test_coverage.report.placeholder`（默认 75）+ INFO log |
+| `DuplicateRateCollector` | ✅ 已接入 PMD-CPD XML | `system_param.gate.duplicate_rate.report.dir` 默认 `reports/cpd`；按 `{dir}/task-{taskId}/cpd.xml` + 同目录 `total-loc.txt` 约定读取，缺失时退化到 `system_param.gate.duplicate_rate.report.placeholder`（默认 0）+ INFO log |
+
+**Worker / CI 写入约定**：
+- 在 `GATE_EVALUATING` 阶段触发前，把对应任务的 JaCoCo CSV 报告写到
+  `reports/coverage/task-{taskId}/jacoco.csv`，或把 PMD-CPD 报告 + total-loc 行数写到
+  `reports/cpd/task-{taskId}/{cpd.xml,total-loc.txt}`。
+- 基目录与 placeholder 值均可通过 `/api/v1/admin/system-params` 热更新。
+- 解析器单元测试：`JacocoCsvParserTest`、`CpdXmlParserTest`（含 XXE 防御断言）。
+- DDL 迁移：`V13__m11_quality_metric_reports.sql` 注入 4 条新 system_param。
 
 ### 11.2 EndToEndSmokeIT 简化
 
@@ -270,6 +278,8 @@ k6 run -e TIMESTAMP=$TS -e PROJECT_ID=1 -e WEBHOOK_SECRET=mock-secret perf/task-
 - [ ] WorkerRecoveryIT 通过
 - [ ] SensitiveLeakIT 5 endpoint 全部通过
 - [ ] OpenApiContractIT 通过（或 baseline 已 updateBaseline）
+- [ ] `bash scripts/smoke.sh` docker-compose 冒烟通过（B6-A.12）
+- [ ] M11 跟进：TestCoverage / DuplicateRate collector 真实数据源接入（V13 迁移已注入 4 条 system_param）
 
 ---
 
