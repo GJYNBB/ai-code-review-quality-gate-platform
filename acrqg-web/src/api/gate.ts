@@ -37,6 +37,31 @@ export function templates(): Promise<QualityGateDTO> {
     })
 }
 
+/** 别名：与 design §5.x 命名约定保持一致（B5-A.1 接口清单）。 */
+export const listTemplates = templates
+
+/**
+ * GET /projects/{projectId}/quality-gates/versions
+ *
+ * 返回该项目所有历史版本（含 enabled=true 的当前版本）；列表项不携带 rules，
+ * 详情请求 getVersion(gateId)。后端若尚未实现该端点，调用方应做 catch 兜底。
+ */
+export function listVersions(projectId: number): Promise<QualityGateDTO[]> {
+    return request<QualityGateDTO[]>({
+        method: 'GET',
+        url: `/projects/${projectId}/quality-gates/versions`,
+        skipErrorMessage: true,
+    })
+}
+
+/** GET /quality-gates/{gateId}（按 id 取某个历史版本的详情，含 rules） */
+export function getVersion(gateId: number): Promise<QualityGateDTO> {
+    return request<QualityGateDTO>({
+        method: 'GET',
+        url: `/quality-gates/${gateId}`,
+    })
+}
+
 /** GET /review-tasks/{taskId}/gate-result */
 export function getResult(taskId: number): Promise<GateResultDTO> {
     return request<GateResultDTO>({

@@ -30,6 +30,7 @@ const Placeholder = () => import('@/pages/PlaceholderPage.vue')
 const DashboardPage = () => import('@/pages/dashboard/DashboardPage.vue')
 const ProjectListPage = () => import('@/pages/project/ProjectListPage.vue')
 const ProjectDetailPage = () => import('@/pages/project/ProjectDetailPage.vue')
+const QualityGatePage = () => import('@/pages/project/QualityGatePage.vue')
 
 // 路由表与 design.md §5.2 对齐：15 条业务路由 + 公开路由 + 异常路由
 export const routes: RouteRecordRaw[] = [
@@ -117,11 +118,10 @@ export const routes: RouteRecordRaw[] = [
             {
                 path: 'projects/:projectId/quality-gate',
                 name: 'project-quality-gate',
-                component: Placeholder,
+                component: QualityGatePage,
                 meta: {
                     requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
                     title: '质量门禁',
-                    placeholderDescription: 'UI-009 质量门禁将在 B5-A 落地',
                 },
             },
             {
