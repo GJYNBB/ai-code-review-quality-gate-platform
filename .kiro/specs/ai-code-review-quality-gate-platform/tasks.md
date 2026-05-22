@@ -1322,7 +1322,7 @@
     - 内容：覆盖率统计（≥ 70%）、k6 基准结果（P95 数据）、越权用例矩阵、PBT 8 条属性的 tries 数与通过率、SD-1~SD-6 用例链接
     - _Requirements: R25_
 
-  - [ ]* B6-A.12 在 docker-compose 上做最终冒烟
+  - [x]* B6-A.12 在 docker-compose 上做最终冒烟
     - 文件：`scripts/smoke.sh`
     - `docker compose up -d` → 等待 health → curl `/health` → 调用 e2e 关键 endpoint 链路 → `docker compose down`
     - 仅验证容器化部署正常，不依赖外部服务
