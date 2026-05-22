@@ -45,6 +45,12 @@
 
         <!-- Plugin versions -->
         <jacoco.version>0.8.12</jacoco.version>
+
+        <!-- Test-only deps (B6-A.3 / B6-A.5 / B6-A.7 / B6-A.9 / B6-A.10) -->
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <wiremock.version>3.10.0</wiremock.version>
+        <jqwik.version>1.9.0</jqwik.version>
+        <zjsonpatch.version>0.4.16</zjsonpatch.version>
     </properties>
 
     <dependencyManagement>
@@ -85,6 +91,15 @@
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
                 <version>${logstash-logback-encoder.version}</version>
+            </dependency>
+
+            <!-- Testcontainers BOM: 测试范围使用 (Postgres / Redis containers) -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -182,6 +197,47 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers (Postgres + Redis) -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- WireMock for AI / Git provider mocks (B6-A.5 / B6-A.7) -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- jqwik for property-based testing (design.md §15.4 / §19) -->
+        <dependency>
+            <groupId>net.jqwik</groupId>
+            <artifactId>jqwik</artifactId>
+            <version>${jqwik.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- zjsonpatch for OpenAPI baseline diff (B6-A.9) -->
+        <dependency>
+            <groupId>com.flipkart.zjsonpatch</groupId>
+            <artifactId>zjsonpatch</artifactId>
+            <version>${zjsonpatch.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
