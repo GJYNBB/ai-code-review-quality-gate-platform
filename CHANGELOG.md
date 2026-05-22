@@ -2,12 +2,20 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，并采用 [SemVer 2.0.0](https://semver.org/lang/zh-CN/) 进行版本管理。
 
-每条记录尾部以 `(Rxx)` 注明所覆盖的 EARS 需求编号，便于回溯到 [requirements.md](./.kiro/specs/ai-code-review-quality-gate-platform/requirements.md) 与 [design.md](./.kiro/specs/ai-code-review-quality-gate-platform/design.md)。
+每条记录尾部以 `(Rxx)` 注明所覆盖的 EARS 需求编号。
 
-## [Unreleased]
+## [1.0.0] - 2026-05-22
 
-### Added
-- 暂无。下一阶段（B0-B）将引入前端 `acrqg-web/` Vue 3 + Vite 骨架；之后批次 B1~B6 按 [tasks.md](./.kiro/specs/ai-code-review-quality-gate-platform/tasks.md) 推进。
+> 全栈交付正式发布。22 个功能/集成分支合并至 `main`，Tag `v1.0.0`。
+
+### Highlights
+- **后端**：M01~M11 全部模块（Auth / Audit / Project / Repository / ReviewTask / Webhook / Diff / Scanner / AI / Gate / Issue / Report / Dashboard / Notification / Writeback / Admin / Quality Metric Reports）
+- **前端**：UI-001 ~ UI-010 全部 18 个 Vue 页面 + DiffViewer + IssueDetailDrawer + WaiverApprovalDialog
+- **质量工程**：8 条 PBT 属性（P1~P8）；60 用例门禁规则矩阵；AI 三类降级；越权矩阵；敏感字段泄露探测；端到端 Smoke 覆盖 SD-1~SD-6；OpenAPI 契约基线；JaCoCo 覆盖率 gate ≥ 70%；Worker 中断恢复；docker-compose 冒烟脚本
+- **真实数据源接入（M11）**：`TestCoverageCollector` 接入 JaCoCo CSV，`DuplicateRateCollector` 接入 PMD-CPD XML（含 XXE 防御），`V13` 注入 4 条 system_param
+
+### Migration 序号已用区段
+- B0=V1~V9、B1=V10~V19、B2=V20~V29、B3=V30~V49、B4=V50~V69、M11=V13
 
 ## [0.1.0] - Batch B0-A 后端基础设施 Bootstrap
 
@@ -30,9 +38,9 @@
 - **B0-A.15** OpenAPI 契约基线 `docs/openapi-baseline.json`（synthetic seed，待 B1+ 控制器接入后由 `/v3/api-docs` 重生成） + 本 `CHANGELOG.md` + `docs/architecture.md` 团队入口文档 (R25.2)
 
 ### Notes
-- B0-A.14（基础设施单元测试）为可选子任务，已在 tasks.md 中以 `*` 标注，未在本批次交付，将随各业务模块测试集中补齐。
+- B0-A.14（基础设施单元测试）为可选子任务，已在原 tasks 计划中以 `*` 标注，未在本批次交付，将随各业务模块测试集中补齐。
 - 仅基础设施层无业务接口，因此 OpenAPI 基线 `paths` 为空；`bearer-auth` 安全方案与元信息已锁定，B1+ 新增控制器在合入 `develop` 后由 IT-x 集成节点重新导出基线。
 - 加密密钥 `tokenEncryptionKey` 通过环境变量装载，DB 不存明文（与 R23.2 对齐）。
 
-[Unreleased]: ./CHANGELOG.md
+[1.0.0]: ./CHANGELOG.md
 [0.1.0]: ./CHANGELOG.md

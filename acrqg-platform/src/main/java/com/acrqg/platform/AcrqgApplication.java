@@ -29,10 +29,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *       仅有具体类（无接口）的 {@code @Service} 因 JDK 动态代理失败。</li>
  * </ul>
  *
- * <p>关联文档：design.md §3 (Tech Stack)、§4 (Backend Layout)、§17.3 (Profiles)。
+ * <p>关联文档：项目 README、docs/architecture.md。
  *
- * @see <a href="../../../../../../../.kiro/specs/ai-code-review-quality-gate-platform/requirements.md">
- *      Requirements R17.3, R24.6</a>
+ * <p>关联需求：R17.3, R24.6。
  */
 @SpringBootApplication(scanBasePackages = "com.acrqg.platform")
 @EnableScheduling

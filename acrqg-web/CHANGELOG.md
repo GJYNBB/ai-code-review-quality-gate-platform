@@ -2,7 +2,7 @@
 
 本前端子项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，并采用 [SemVer 2.0.0](https://semver.org/lang/zh-CN/) 进行版本管理。
 
-每条记录尾部以 `(Rxx)` 注明所覆盖的 EARS 需求编号，便于回溯到 [requirements.md](../.kiro/specs/ai-code-review-quality-gate-platform/requirements.md) 与 [design.md](../.kiro/specs/ai-code-review-quality-gate-platform/design.md)。
+每条记录尾部以 `(Rxx)` 注明所覆盖的 EARS 需求编号。
 
 ## [Unreleased]
 

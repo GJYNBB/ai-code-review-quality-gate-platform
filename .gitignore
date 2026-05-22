@@ -64,6 +64,10 @@ extracted_docs.txt
 *.tmp
 *.bak
 
+# ----- Original input docs (project deliverables don't track raw inputs) -----
+*.docx
+页面原型_prototype.html
+
 # ----- Logs / Runtime -----
 logs/
 *.log

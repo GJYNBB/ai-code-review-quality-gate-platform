@@ -96,14 +96,14 @@ npm run preview
 
 ## 5. 与后端的契约
 
-- **响应包装**：参考 [design.md §8.1](../.kiro/specs/ai-code-review-quality-gate-platform/design.md)；`code === 0` 表示成功，HTTP 拦截器解包返回 `data`；其它情况按错误码弹 `ElMessage`。
-- **错误码**：完整 16 项中文映射见 [`src/api/errorCodes.ts`](./src/api/errorCodes.ts)，与后端 `ErrorCode` 枚举（[design.md §8.2](../.kiro/specs/ai-code-review-quality-gate-platform/design.md)）一一对应。
+- **响应包装**：`code === 0` 表示成功，HTTP 拦截器解包返回 `data`；其它情况按错误码弹 `ElMessage`。
+- **错误码**：完整中文映射见 [`src/api/errorCodes.ts`](./src/api/errorCodes.ts)，与后端 `ErrorCode` 枚举一一对应。
 - **Token 刷新**：拦截器自动监听 `AUTH_INVALID_TOKEN`，使用 refreshToken 单飞重放原请求；refresh 失败时清空认证态并跳转 `/login?redirect=...`。
-- **请求追踪**：每个请求自动注入 `X-Request-Id`（UUID v4），与后端 MDC `traceId` 串联（[design.md §8.5](../.kiro/specs/ai-code-review-quality-gate-platform/design.md)）。
+- **请求追踪**：每个请求自动注入 `X-Request-Id`（UUID v4），与后端 MDC `traceId` 串联。
 
 ## 6. 路由与权限
 
-完整路由表与必需角色见 [`src/router/index.ts`](./src/router/index.ts)，与 [design.md §5.2](../.kiro/specs/ai-code-review-quality-gate-platform/design.md) 完全对齐：
+完整路由表与必需角色见 [`src/router/index.ts`](./src/router/index.ts)：
 
 - 公开路由：`/login`、`/forbidden`、`/:pathMatch(.*)*`（404）
 - 已登录可访问：`/dashboard`、`/projects`、`/review-tasks`、`/notifications` 等
@@ -124,5 +124,3 @@ npm run preview
 |---|---|---|
 | B0-B.7 (可选)  | 前端骨架 Vitest 单元测试（http 拦截器 / router 守卫）   | `tests/unit/*.spec.ts` |
 | B5-A           | UI-001 ~ UI-010 全部业务页面，按 IT-2 / IT-3 / IT-4 / IT-5 里程碑分阶段拼装 | `src/pages/*` |
-
-参见 [tasks.md](../.kiro/specs/ai-code-review-quality-gate-platform/tasks.md)。

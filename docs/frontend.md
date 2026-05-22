@@ -1,7 +1,6 @@
 # 前端架构文档（acrqg-web）
 
-> 关联设计：[design.md](../.kiro/specs/ai-code-review-quality-gate-platform/design.md) §5（路由 / 组件树）、§16（报告页结构）、§17（问题状态机）、§19（通知）。
-> 关联需求：R1 ~ R3、R4 ~ R6、R8 ~ R9、R13 ~ R19、R21 ~ R23。
+> 本文档记录前端的状态切片、组件契约、错误码映射与路由权限矩阵。后端契约的真实来源是 `docs/openapi-baseline.json`。
 >
 > 本文档面向「想理解 acrqg-web 中状态管理结构与跨组件契约」的开发者，对应 B5-A.16 交付。
 > 命令、目录结构、容器化指南详见 [acrqg-web/README.md](../acrqg-web/README.md)。
