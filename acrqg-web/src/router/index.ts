@@ -28,6 +28,8 @@ const Placeholder = () => import('@/pages/PlaceholderPage.vue')
 
 // B5-A 已落地的页面（异步懒加载）
 const DashboardPage = () => import('@/pages/dashboard/DashboardPage.vue')
+const ProjectListPage = () => import('@/pages/project/ProjectListPage.vue')
+const ProjectDetailPage = () => import('@/pages/project/ProjectDetailPage.vue')
 
 // 路由表与 design.md §5.2 对齐：15 条业务路由 + 公开路由 + 异常路由
 export const routes: RouteRecordRaw[] = [
@@ -77,21 +79,19 @@ export const routes: RouteRecordRaw[] = [
             {
                 path: 'projects',
                 name: 'project-list',
-                component: Placeholder,
+                component: ProjectListPage,
                 meta: {
                     requiredRoles: [],
                     title: '项目列表',
-                    placeholderDescription: 'UI-003 项目列表将在 B5-A 落地',
                 },
             },
             {
                 path: 'projects/:projectId',
                 name: 'project-detail',
-                component: Placeholder,
+                component: ProjectDetailPage,
                 meta: {
                     requiredRoles: [],
                     title: '项目详情',
-                    placeholderDescription: 'UI-004 项目详情将在 B5-A 落地',
                 },
             },
             {
