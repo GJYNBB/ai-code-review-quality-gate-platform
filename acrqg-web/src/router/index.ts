@@ -36,6 +36,7 @@ const DashboardPage = () => import('@/pages/dashboard/DashboardPage.vue')
 const ProjectListPage = () => import('@/pages/project/ProjectListPage.vue')
 const ProjectDetailPage = () => import('@/pages/project/ProjectDetailPage.vue')
 const QualityGatePage = () => import('@/pages/project/QualityGatePage.vue')
+const ReviewTaskListPage = () => import('@/pages/review/ReviewTaskListPage.vue')
 
 /**
  * 路由表对齐 design.md §5.2（15 条业务路由 + 登录 / 403 / 404）：
@@ -147,12 +148,11 @@ export const routes: RouteRecordRaw[] = [
             {
                 path: 'review-tasks',
                 name: 'review-task-list',
-                component: Placeholder,
+                component: ReviewTaskListPage,
                 meta: {
                     public: false,
                     requiredRoles: [],
                     title: '评审任务',
-                    placeholderDescription: 'UI-006 评审任务列表将在 B5-A.8 落地',
                 },
             },
             {
