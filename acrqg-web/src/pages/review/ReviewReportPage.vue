@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * UI-007 评审报告页（B5-A.9）。
+ * UI-007 评审报告页（B5-A.9 + B5-A.13）。
  *
  * 关联需求：R9.4 / R9.6 / R15 / R16 / R17。
  *
@@ -11,97 +11,105 @@
  *
  * el-tabs 4 个 Tab：Overview / Issues / Diff / Logs
  *
- * B5-A.13 会在此基础上注入豁免列表与审批入口。
+ * B5-A.13：在 Overview 中嵌入豁免申请列表（gateWaiver.listByTask）+ 审批入口；
+ *          PROJECT_ADMIN / REVIEWER / SYSTEM_ADMIN 可对 PENDING 状态条目发起 approve/reject
+ *          （不允许审批自己的申请）。
  */
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { ArrowLeft, RefreshLeft, CircleClose, ChatLineSquare } from '@element-plus/icons-vue';
-import dayjs from 'dayjs';
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft, RefreshLeft, CircleClose, ChatLineSquare } from '@element-plus/icons-vue'
+import dayjs from 'dayjs'
 
-import * as reviewTaskApi from '@/api/reviewTask';
-import * as gateWaiverApi from '@/api/gateWaiver';
-import { ApiBusinessError } from '@/api/http';
-import { useAuthStore } from '@/stores/auth';
-import { hasAnyRole } from '@/utils/permission';
+import * as reviewTaskApi from '@/api/reviewTask'
+import * as gateWaiverApi from '@/api/gateWaiver'
+import { ApiBusinessError } from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
+import { hasAnyRole } from '@/utils/permission'
+import { formatDateTime } from '@/utils/format'
 import {
   REVIEW_TASK_STATUS_LABELS,
   REVIEW_TASK_STATUS_TAG_TYPE,
-} from '@/constants/reviewTaskStatus';
-import type { ReviewTaskDTO, ReviewTaskStatus } from '@/types/api';
+} from '@/constants/reviewTaskStatus'
+import type { GateWaiverDTO, ReviewReportDTO, ReviewTaskDTO, ReviewTaskStatus } from '@/types/api'
 
-import ReviewReportOverviewTab from '@/pages/review/ReviewReportOverviewTab.vue';
-import ReviewReportIssuesTab from '@/pages/review/ReviewReportIssuesTab.vue';
-import ReviewReportDiffTab from '@/pages/review/ReviewReportDiffTab.vue';
-import ReviewReportLogsTab from '@/pages/review/ReviewReportLogsTab.vue';
+import ReviewReportOverviewTab from '@/pages/review/ReviewReportOverviewTab.vue'
+import ReviewReportIssuesTab from '@/pages/review/ReviewReportIssuesTab.vue'
+import ReviewReportDiffTab from '@/pages/review/ReviewReportDiffTab.vue'
+import ReviewReportLogsTab from '@/pages/review/ReviewReportLogsTab.vue'
+import WaiverApprovalDialog from '@/components/WaiverApprovalDialog.vue'
 
-const route = useRoute();
-const router = useRouter();
-const authStore = useAuthStore();
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const { user } = storeToRefs(authStore)
 
-const taskId = computed(() => Number(route.params.taskId));
-const task = ref<ReviewTaskDTO | null>(null);
-const taskLoading = ref(false);
-const activeTab = ref<'overview' | 'issues' | 'diff' | 'logs'>('overview');
+const taskId = computed(() => Number(route.params.taskId))
+const task = ref<ReviewTaskDTO | null>(null)
+const taskLoading = ref(false)
+const activeTab = ref<'overview' | 'issues' | 'diff' | 'logs'>('overview')
 
-const overviewRef = ref<{ reload: () => Promise<void> } | null>(null);
+const overviewRef = ref<{ reload: () => Promise<void> } | null>(null)
 
 const status = computed<ReviewTaskStatus | null>(() =>
   task.value ? (task.value.status as ReviewTaskStatus) : null,
-);
+)
 
 const canRetry = computed(() => {
-  if (!status.value) return false;
+  if (!status.value) return false
   return (
     hasAnyRole(authStore.roles, ['PROJECT_ADMIN', 'REVIEWER', 'SYSTEM_ADMIN']) &&
     ['PASSED', 'FAILED_GATE', 'EXECUTION_FAILED'].includes(status.value)
-  );
-});
+  )
+})
 
 const canCancel = computed(() => {
-  if (!status.value) return false;
-  return hasAnyRole(authStore.roles, ['PROJECT_ADMIN', 'SYSTEM_ADMIN']) && status.value === 'PENDING';
-});
+  if (!status.value) return false
+  return (
+    hasAnyRole(authStore.roles, ['PROJECT_ADMIN', 'SYSTEM_ADMIN']) && status.value === 'PENDING'
+  )
+})
 
 const canApplyWaiver = computed(() => {
-  if (!status.value) return false;
+  if (!status.value) return false
   return (
     hasAnyRole(authStore.roles, ['DEVELOPER', 'REVIEWER', 'PROJECT_ADMIN', 'SYSTEM_ADMIN']) &&
     status.value === 'FAILED_GATE'
-  );
-});
+  )
+})
 
 async function loadTask() {
-  if (!Number.isFinite(taskId.value)) return;
-  taskLoading.value = true;
+  if (!Number.isFinite(taskId.value)) return
+  taskLoading.value = true
   try {
-    task.value = await reviewTaskApi.get(taskId.value);
+    task.value = await reviewTaskApi.get(taskId.value)
   } finally {
-    taskLoading.value = false;
+    taskLoading.value = false
   }
 }
 
 function goBack() {
-  router.push('/review-tasks');
+  router.push('/review-tasks')
 }
 
 async function handleRetry() {
-  if (!task.value) return;
-  let reason = '';
+  if (!task.value) return
+  let reason = ''
   try {
     const ans = (await ElMessageBox.prompt('请输入重试原因（可选）', '重试任务', {
       confirmButtonText: '确认重试',
       cancelButtonText: '取消',
       inputType: 'textarea',
-    })) as { value: string };
-    reason = ans.value ?? '';
+    })) as { value: string }
+    reason = ans.value ?? ''
   } catch {
-    return;
+    return
   }
   try {
-    await reviewTaskApi.retry(task.value.id, { reason: reason.trim() || undefined });
-    ElMessage.success('已发起重试');
-    await loadTask();
+    await reviewTaskApi.retry(task.value.id, { reason: reason.trim() || undefined })
+    ElMessage.success('已发起重试')
+    await loadTask()
   } catch (err) {
     if (err instanceof ApiBusinessError) {
       // 拦截器已弹错
@@ -110,23 +118,23 @@ async function handleRetry() {
 }
 
 async function handleCancel() {
-  if (!task.value) return;
-  let reason = '';
+  if (!task.value) return
+  let reason = ''
   try {
     const ans = (await ElMessageBox.prompt('请输入取消原因', '取消任务', {
       confirmButtonText: '确认取消',
       cancelButtonText: '关闭',
       inputType: 'textarea',
       inputValidator: (v) => (v && v.trim().length > 0 ? true : '取消原因不能为空'),
-    })) as { value: string };
-    reason = ans.value;
+    })) as { value: string }
+    reason = ans.value
   } catch {
-    return;
+    return
   }
   try {
-    await reviewTaskApi.cancel(task.value.id, { reason: reason.trim() });
-    ElMessage.success('任务已取消');
-    await loadTask();
+    await reviewTaskApi.cancel(task.value.id, { reason: reason.trim() })
+    ElMessage.success('任务已取消')
+    await loadTask()
   } catch (err) {
     if (err instanceof ApiBusinessError) {
       // 拦截器已弹错
@@ -135,51 +143,105 @@ async function handleCancel() {
 }
 
 // ---- 申请豁免 ----
-const waiverDialogVisible = ref(false);
-const waiverReason = ref('');
-const waiverExpireAt = ref<string>('');
-const waiverSubmitting = ref(false);
+const waiverDialogVisible = ref(false)
+const waiverReason = ref('')
+const waiverExpireAt = ref<string>('')
+const waiverSubmitting = ref(false)
 
 const waiverFormValid = computed(() => {
-  if (waiverReason.value.trim().length < 10) return false;
-  if (!waiverExpireAt.value) return false;
-  if (dayjs(waiverExpireAt.value).isBefore(dayjs())) return false;
-  return true;
-});
+  if (waiverReason.value.trim().length < 10) return false
+  if (!waiverExpireAt.value) return false
+  if (dayjs(waiverExpireAt.value).isBefore(dayjs())) return false
+  return true
+})
 
 function openWaiverDialog() {
-  waiverReason.value = '';
-  waiverExpireAt.value = '';
-  waiverDialogVisible.value = true;
+  waiverReason.value = ''
+  waiverExpireAt.value = ''
+  waiverDialogVisible.value = true
 }
 
 async function submitWaiver() {
-  if (!task.value || !waiverFormValid.value) return;
-  waiverSubmitting.value = true;
+  if (!task.value || !waiverFormValid.value) return
+  waiverSubmitting.value = true
   try {
     await gateWaiverApi.apply(task.value.id, {
       reason: waiverReason.value.trim(),
       // 后端 DTO 当前仅含 reason；expireAt 为前端校验保留字段
-    });
-    ElMessage.success('豁免申请已提交');
-    waiverDialogVisible.value = false;
-    // B5-A.13 接入豁免列表后会调用 reloadWaivers
+    })
+    ElMessage.success('豁免申请已提交')
+    waiverDialogVisible.value = false
+    await reloadWaivers()
   } catch (err) {
     if (err instanceof ApiBusinessError) {
       // 拦截器已弹错
     }
   } finally {
-    waiverSubmitting.value = false;
+    waiverSubmitting.value = false
   }
 }
 
+// ---- 豁免列表 + 审批（B5-A.13）----
+const waivers = ref<GateWaiverDTO[]>([])
+const waiversLoading = ref(false)
+
+async function reloadWaivers() {
+  if (!task.value) return
+  waiversLoading.value = true
+  try {
+    waivers.value = await gateWaiverApi.listByTask(task.value.id)
+  } catch {
+    waivers.value = []
+  } finally {
+    waiversLoading.value = false
+  }
+}
+
+const canApproveWaiver = computed(() =>
+  hasAnyRole(authStore.roles, ['PROJECT_ADMIN', 'REVIEWER', 'SYSTEM_ADMIN']),
+)
+
+const approvalDialogVisible = ref(false)
+const approvalTarget = ref<GateWaiverDTO | null>(null)
+
+function openApprovalDialog(w: GateWaiverDTO) {
+  approvalTarget.value = w
+  approvalDialogVisible.value = true
+}
+
+async function handleApprovalDone() {
+  approvalDialogVisible.value = false
+  approvalTarget.value = null
+  await reloadWaivers()
+  // 审批后任务状态可能变化（写回 commit status），刷新任务与报告
+  await loadTask()
+  await overviewRef.value?.reload?.()
+}
+
+function waiverStatusTag(s: string): 'info' | 'success' | 'warning' | 'danger' {
+  if (s === 'APPROVED') return 'success'
+  if (s === 'REJECTED') return 'danger'
+  return 'warning'
+}
+
+function isSelfWaiver(w: GateWaiverDTO): boolean {
+  return user.value != null && w.applicantId === user.value.id
+}
+
+function handleReportLoaded(_report: ReviewReportDTO) {
+  // 报告加载完成后顺带刷新豁免列表
+  void reloadWaivers()
+}
+
 onMounted(async () => {
-  await loadTask();
-});
+  await loadTask()
+  await reloadWaivers()
+})
 
 watch(taskId, async () => {
-  await loadTask();
-});
+  await loadTask()
+  await reloadWaivers()
+})
 </script>
 
 <template>
@@ -203,7 +265,12 @@ watch(taskId, async () => {
         <el-button v-if="canCancel" type="danger" :icon="CircleClose" @click="handleCancel">
           取消
         </el-button>
-        <el-button v-if="canApplyWaiver" type="warning" :icon="ChatLineSquare" @click="openWaiverDialog">
+        <el-button
+          v-if="canApplyWaiver"
+          type="warning"
+          :icon="ChatLineSquare"
+          @click="openWaiverDialog"
+        >
           申请豁免
         </el-button>
       </div>
@@ -212,7 +279,64 @@ watch(taskId, async () => {
     <el-card shadow="never" class="review-report-page__tabs">
       <el-tabs v-model="activeTab">
         <el-tab-pane label="概览" name="overview">
-          <ReviewReportOverviewTab ref="overviewRef" :task-id="taskId" />
+          <ReviewReportOverviewTab ref="overviewRef" :task-id="taskId" @loaded="handleReportLoaded">
+            <template #extra>
+              <el-card v-if="waivers.length > 0 || waiversLoading" id="waiver" shadow="never">
+                <template #header>
+                  <span>豁免申请（{{ waivers.length }}）</span>
+                </template>
+                <el-table v-loading="waiversLoading" :data="waivers" stripe>
+                  <el-table-column label="状态" width="100">
+                    <template #default="{ row }">
+                      <el-tag :type="waiverStatusTag(row.status)" size="small">
+                        {{ row.status }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    prop="reason"
+                    label="申请理由"
+                    min-width="240"
+                    show-overflow-tooltip
+                  />
+                  <el-table-column label="申请人" width="120">
+                    <template #default="{ row }">#{{ row.applicantId }}</template>
+                  </el-table-column>
+                  <el-table-column label="申请时间" width="180">
+                    <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+                  </el-table-column>
+                  <el-table-column label="审批人" width="120">
+                    <template #default="{ row }">
+                      {{ row.approverId ? `#${row.approverId}` : '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="审批时间" width="180">
+                    <template #default="{ row }">{{ formatDateTime(row.approvedAt) }}</template>
+                  </el-table-column>
+                  <el-table-column
+                    prop="approvalComment"
+                    label="审批意见"
+                    min-width="200"
+                    show-overflow-tooltip
+                  />
+                  <el-table-column label="操作" width="120" fixed="right">
+                    <template #default="{ row }">
+                      <el-button
+                        v-if="canApproveWaiver && row.status === 'PENDING' && !isSelfWaiver(row)"
+                        link
+                        type="primary"
+                        size="small"
+                        @click="openApprovalDialog(row)"
+                      >
+                        审批
+                      </el-button>
+                      <span v-else class="text-secondary">-</span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </el-card>
+            </template>
+          </ReviewReportOverviewTab>
         </el-tab-pane>
 
         <el-tab-pane label="问题" name="issues" lazy>
@@ -270,6 +394,13 @@ watch(taskId, async () => {
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 审批对话框（B5-A.13） -->
+    <WaiverApprovalDialog
+      v-model="approvalDialogVisible"
+      :waiver="approvalTarget"
+      @done="handleApprovalDone"
+    />
   </div>
 </template>
 
@@ -298,5 +429,9 @@ watch(taskId, async () => {
       flex: 1 1 auto;
     }
   }
+}
+
+.text-secondary {
+  color: var(--el-text-color-secondary);
 }
 </style>
