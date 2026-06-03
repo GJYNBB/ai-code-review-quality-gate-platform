@@ -7,6 +7,7 @@
 
 | 文档 | 作用 |
 |---|---|
+| [README_EN.md](./README_EN.md) | English README / 英文项目说明 |
 | [docs/architecture.md](./docs/architecture.md) | 系统架构、模块拆分、分支与集成策略、目录结构 |
 | [docs/frontend.md](./docs/frontend.md) | 前端状态管理、组件契约、错误码映射、路由权限矩阵 |
 | [docs/openapi-baseline.json](./docs/openapi-baseline.json) | OpenAPI 契约基线，由 `OpenApiContractIT` 校验 |
