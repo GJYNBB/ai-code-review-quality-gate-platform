@@ -141,17 +141,17 @@ const sortedHistory = computed(() => {
   const list = issue.value?.history ?? []
   return [...list].sort((a, b) => (a.changedAt < b.changedAt ? 1 : -1))
 })
+
+function beforeClose(done: () => void) {
+  close()
+  done()
+}
 </script>
 
 <template>
   <el-drawer
     :model-value="modelValue"
-    :before-close="
-      (done) => {
-        close()
-        done()
-      }
-    "
+    :before-close="beforeClose"
     direction="rtl"
     size="50%"
     :title="issue ? `问题 #${issue.id}` : '问题详情'"

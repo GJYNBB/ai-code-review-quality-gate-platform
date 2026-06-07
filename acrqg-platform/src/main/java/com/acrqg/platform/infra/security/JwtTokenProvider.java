@@ -56,6 +56,10 @@ public class JwtTokenProvider {
     /** refresh token 自定义 claim 标识。 */
     public static final String TOKEN_TYPE_REFRESH = "REFRESH";
 
+    /** 源码中保留的本地开发默认密钥；启动期必须显式拒绝。 */
+    private static final String DEV_DEFAULT_SECRET =
+            "please-change-me-32-bytes-minimum-secret-key-for-jwt-hmac-signing";
+
     /** 自定义 claim 键名。 */
     public static final String CLAIM_USERNAME = "username";
     public static final String CLAIM_ROLES = "roles";
@@ -86,6 +90,10 @@ public class JwtTokenProvider {
     void init() {
         if (secret == null) {
             throw new IllegalStateException("app.security.jwt.secret must not be null");
+        }
+        if (DEV_DEFAULT_SECRET.equals(secret)) {
+            throw new IllegalStateException(
+                    "app.security.jwt.secret uses the known development default; set JWT_SECRET explicitly");
         }
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {

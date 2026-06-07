@@ -100,6 +100,17 @@ public class IdempotencyStore {
         return Optional.ofNullable(v);
     }
 
+    /**
+     * 覆盖写入已有幂等结果并设置 TTL。该操作是单条 Redis SET，不存在 delete+set 间隙。
+     */
+    public void put(String key, String value, Duration ttl) {
+        validateKey(key);
+        if (ttl == null || ttl.isZero() || ttl.isNegative()) {
+            throw new IllegalArgumentException("ttl must be a positive Duration");
+        }
+        stringRedisTemplate.opsForValue().set(key, value == null ? "" : value, ttl);
+    }
+
     /** 删除占位（调试 / 回滚场景）。 */
     public void delete(String key) {
         validateKey(key);

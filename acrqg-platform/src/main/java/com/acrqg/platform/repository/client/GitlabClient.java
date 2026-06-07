@@ -2,6 +2,7 @@ package com.acrqg.platform.repository.client;
 
 import com.acrqg.platform.common.util.JsonUtils;
 import com.acrqg.platform.diff.domain.ChangeType;
+import com.acrqg.platform.infra.net.OutboundUrlGuard;
 import com.acrqg.platform.repository.domain.Provider;
 import com.acrqg.platform.repository.dto.CommitStatusRequest;
 import com.acrqg.platform.repository.dto.CommitStatusState;
@@ -75,6 +76,7 @@ public class GitlabClient extends AbstractProviderClient {
         final RepoUrlParser.Parsed parsed;
         try {
             parsed = RepoUrlParser.parse(req.repoUrl());
+            OutboundUrlGuard.requirePublicHost(parsed.host(), "GitLab repository URL");
         } catch (IllegalArgumentException ex) {
             return ConnectivityResultDTO.unreachable("unreachable: " + ex.getMessage());
         }
@@ -101,6 +103,7 @@ public class GitlabClient extends AbstractProviderClient {
         final RepoUrlParser.Parsed parsed;
         try {
             parsed = RepoUrlParser.parse(req.repoUrl());
+            OutboundUrlGuard.requirePublicHost(parsed.host(), "GitLab repository URL");
         } catch (IllegalArgumentException ex) {
             throw new DiffFetchException(req.provider(), req.repoUrl(), req.prId(),
                     "invalid repoUrl: " + ex.getMessage(), ex);
@@ -199,6 +202,7 @@ public class GitlabClient extends AbstractProviderClient {
         final RepoUrlParser.Parsed parsed;
         try {
             parsed = RepoUrlParser.parse(req.repoUrl());
+            OutboundUrlGuard.requirePublicHost(parsed.host(), "GitLab repository URL");
         } catch (IllegalArgumentException ex) {
             throw new WritebackException(req.provider(), req.commitSha(), 0,
                     "invalid repoUrl: " + ex.getMessage(), ex);

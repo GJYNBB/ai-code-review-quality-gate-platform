@@ -36,6 +36,7 @@ spring:
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379/0}
+      password: ${REDIS_PASSWORD:}
       timeout: 5s
       lettuce:
         pool:
@@ -136,12 +137,11 @@ app:
 
   security:
     jwt:
-      secret: ${JWT_SECRET:please-change-me-32-bytes-minimum-secret-key-for-jwt-hmac-signing}
+      secret: ${JWT_SECRET}
       access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:7200}
       refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:604800}
-    # AES-GCM 派生主密钥 (R5.3 / R21.1 / R23.2)。生产环境必须通过 TOKEN_ENCRYPTION_KEY
-    # 环境变量注入；默认值仅用于本地开发，绝不可用于生产。
-    token-encryption-key: ${TOKEN_ENCRYPTION_KEY:dev-change-me-32-bytes-token-encryption-key!!}
+    # AES-GCM 派生主密钥 (R5.3 / R21.1 / R23.2)。必须通过 TOKEN_ENCRYPTION_KEY 环境变量注入。
+    token-encryption-key: ${TOKEN_ENCRYPTION_KEY}
 
   review:
     worker:

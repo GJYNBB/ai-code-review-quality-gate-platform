@@ -103,9 +103,18 @@ public class TaskOrchestrator {
      * 避免 stage 实现内部修改了 task 字段（例如 ai_available）后被覆盖。
      */
     public void run(long taskId) {
+        run(taskId, null);
+    }
+
+    public void run(long taskId, Integer expectedAttempt) {
         ReviewTask task = reviewTaskMapper.selectById(taskId);
         if (task == null) {
             log.warn("TaskOrchestrator.run: task not found, skipped. taskId={}", taskId);
+            return;
+        }
+        if (!attemptMatches(task, expectedAttempt)) {
+            log.warn("TaskOrchestrator.run: stale stream attempt skipped. taskId={} expectedAttempt={} dbAttempt={}",
+                    taskId, expectedAttempt, task.getAttempt());
             return;
         }
 
@@ -123,6 +132,11 @@ public class TaskOrchestrator {
             task = reviewTaskMapper.selectById(taskId);
             if (task == null) {
                 log.warn("TaskOrchestrator.run: task disappeared mid-flight. taskId={}", taskId);
+                return;
+            }
+            if (!attemptMatches(task, expectedAttempt)) {
+                log.warn("TaskOrchestrator.run: stale stream attempt skipped mid-flight. taskId={} expectedAttempt={} dbAttempt={}",
+                        taskId, expectedAttempt, task.getAttempt());
                 return;
             }
             current = parseStatusOrFail(task.getStatus(), taskId);
@@ -216,6 +230,14 @@ public class TaskOrchestrator {
      * <p>使用 Mapper 的 CAS 接口，避免与并发 retry 冲突；当 CAS 失败时仅记 WARN
      * 不再重试。
      */
+    private static boolean attemptMatches(ReviewTask task, Integer expectedAttempt) {
+        if (expectedAttempt == null) {
+            return true;
+        }
+        int dbAttempt = task.getAttempt() == null ? 1 : task.getAttempt();
+        return dbAttempt == expectedAttempt;
+    }
+
     private void forceFail(long taskId, ReviewTaskStatus from) {
         if (from.isTerminal()) {
             return;

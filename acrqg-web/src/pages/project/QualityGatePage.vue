@@ -92,6 +92,10 @@ const form = reactive<{ name: string; rules: RuleRow[] }>({
 /** field error map: key=row index, value=error message */
 const rowErrors = ref<Record<number, string>>({})
 
+function ruleRowClassName({ rowIndex }: { rowIndex: number }): string {
+  return rowErrors.value[rowIndex] ? 'rule-row-error' : ''
+}
+
 async function loadEnabled() {
   if (!Number.isFinite(projectId.value)) return
   loading.value = true
@@ -269,14 +273,16 @@ watch(projectId, () => {
 </script>
 
 <template>
-  <div class="quality-gate-page" v-loading="loading">
+  <div v-loading="loading" class="quality-gate-page">
     <el-card shadow="never" class="quality-gate-page__header">
       <div class="header-row">
         <div>
           <h3 class="header-row__title">质量门禁配置</h3>
           <div class="header-row__sub">
             当前启用版本：
-            <el-tag v-if="enabled?.version" type="success" size="small">v{{ enabled.version }}</el-tag>
+            <el-tag v-if="enabled?.version" type="success" size="small"
+              >v{{ enabled.version }}</el-tag
+            >
             <span v-else class="text-secondary">未配置</span>
             <span v-if="enabled?.createdAt" class="text-secondary">
               · 创建于 {{ formatDateTime(enabled.createdAt) }}
@@ -297,7 +303,7 @@ watch(projectId, () => {
         </el-form-item>
       </el-form>
 
-      <el-table :data="form.rules" border :row-class-name="({ rowIndex }) => (rowErrors[rowIndex] ? 'rule-row-error' : '')">
+      <el-table :data="form.rules" border :row-class-name="ruleRowClassName">
         <el-table-column type="index" label="顺序" width="80" />
         <el-table-column label="指标 metric" min-width="220">
           <template #default="{ row }">
@@ -332,7 +338,13 @@ watch(projectId, () => {
         </el-table-column>
         <el-table-column label="操作" width="160" align="center" fixed="right">
           <template #default="{ $index }">
-            <el-button :icon="ArrowUp" link size="small" :disabled="$index === 0" @click="moveUp($index)" />
+            <el-button
+              :icon="ArrowUp"
+              link
+              size="small"
+              :disabled="$index === 0"
+              @click="moveUp($index)"
+            />
             <el-button
               :icon="ArrowDown"
               link
@@ -345,7 +357,9 @@ watch(projectId, () => {
         </el-table-column>
         <el-table-column label="错误" min-width="240">
           <template #default="{ $index }">
-            <span v-if="rowErrors[$index]" class="rule-row-error__text">{{ rowErrors[$index] }}</span>
+            <span v-if="rowErrors[$index]" class="rule-row-error__text">{{
+              rowErrors[$index]
+            }}</span>
           </template>
         </el-table-column>
       </el-table>

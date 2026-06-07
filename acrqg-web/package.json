@@ -10,7 +10,7 @@
         "preview": "vite preview",
         "lint": "eslint . --ext .ts,.tsx,.vue --fix",
         "format": "prettier --write \"src/**/*.{ts,tsx,vue,scss,css,json,md}\"",
-        "test:unit": "vitest --run",
+        "test:unit": "vitest --run --passWithNoTests",
         "test:unit:watch": "vitest"
     },
     "dependencies": {

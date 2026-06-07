@@ -55,5 +55,5 @@ public interface WebhookService {
      * @param rawBody  HTTP 原始请求体（必须保持字节级别原样，因 GitHub 计算 HMAC 依赖）
      * @return 处理结果；忽略时 {@link WebhookHandleResult#ignored} 为 {@code true}
      */
-    WebhookHandleResult handle(Provider provider, HttpHeaders headers, String rawBody);
+    WebhookHandleResult handle(Provider provider, HttpHeaders headers, byte[] rawBody);
 }

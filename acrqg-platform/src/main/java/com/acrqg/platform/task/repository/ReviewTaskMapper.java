@@ -100,6 +100,17 @@ public interface ReviewTaskMapper extends BaseMapper<ReviewTask> {
             """)
     List<ReviewTask> findStuckTasks();
 
+    /** Redis 入队失败或 Stream 消息丢失时，扫描超过阈值仍处于 PENDING 的任务用于重新入队。 */
+    @Select("""
+            SELECT * FROM review_task
+             WHERE status = 'PENDING'
+               AND updated_at < NOW() - (#{olderThanSeconds} * INTERVAL '1 second')
+             ORDER BY id ASC
+             LIMIT #{limit}
+            """)
+    List<ReviewTask> findOldPendingTasks(@Param("olderThanSeconds") long olderThanSeconds,
+                                         @Param("limit") int limit);
+
     /**
      * 按项目集合分页列出任务（{@code created_at DESC, id DESC}）。
      *

@@ -117,7 +117,7 @@ INSERT INTO scanner_config (name, language, enabled, command, result_parser_type
      'eslint --no-eslintrc --format json --output-file {output} {file}',
      'ESLINT_JSON'),
     ('pylint',     'python',     TRUE,
-     'pylint --output-format=json {file} > {output}',
+     'pylint --output-format=json {file}',
      'PYLINT_JSON'),
     ('semgrep',    'any',        TRUE,
      'semgrep --config=auto --json --output {output} {file}',

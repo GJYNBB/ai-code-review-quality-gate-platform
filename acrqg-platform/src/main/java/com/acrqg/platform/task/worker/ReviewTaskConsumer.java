@@ -8,7 +8,7 @@ import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -120,12 +120,13 @@ public class ReviewTaskConsumer {
         this.workerExecutor = new ThreadPoolExecutor(
                 concurrency, concurrency,
                 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(),
+                new ArrayBlockingQueue<>(queueCapacity(concurrency)),
                 r -> {
                     Thread t = new Thread(r, "review-task-worker");
                     t.setDaemon(false);
                     return t;
-                });
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy());
 
         // 3) 订阅 param-changed 通道
         registerParamChangedSubscription(concurrency);
@@ -214,6 +215,7 @@ public class ReviewTaskConsumer {
     private void processRecord(MapRecord<String, Object, Object> record) {
         String recordId = record.getId() == null ? null : record.getId().getValue();
         Long taskId = parseTaskId(record.getValue());
+        Integer attempt = parseAttempt(record.getValue());
         if (taskId == null) {
             log.warn("processRecord: invalid taskId in record, skipping. recordId={} fields={}",
                     recordId, record.getValue());
@@ -222,7 +224,12 @@ public class ReviewTaskConsumer {
             return;
         }
         try {
-            taskOrchestrator.run(taskId);
+            if (attempt == null) {
+                // 兼容旧 Stream 消息：历史消息没有 attempt 字段时仍按 DB 当前 attempt 运行。
+                taskOrchestrator.run(taskId);
+            } else {
+                taskOrchestrator.run(taskId, attempt);
+            }
             ackQuietly(recordId);
         } catch (RuntimeException ex) {
             // 不 ACK：留在 PEL，等待 XCLAIM 或人工干预
@@ -256,6 +263,26 @@ public class ReviewTaskConsumer {
         } catch (NumberFormatException ex) {
             return null;
         }
+    }
+
+    private static Integer parseAttempt(Map<Object, Object> fields) {
+        if (fields == null) {
+            return null;
+        }
+        Object v = fields.get("attempt");
+        if (v == null) {
+            return null;
+        }
+        try {
+            int parsed = Integer.parseInt(String.valueOf(v).trim());
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static int queueCapacity(int concurrency) {
+        return Math.max(concurrency * 4, XREAD_COUNT);
     }
 
     // =====================================================================

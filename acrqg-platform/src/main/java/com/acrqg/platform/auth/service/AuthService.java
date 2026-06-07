@@ -29,12 +29,14 @@ public interface AuthService {
     LoginResultDTO login(LoginRequest request);
 
     /**
-     * 注销当前会话：把 access 的 jti 加入 Redis 黑名单（TTL=token 剩余有效期）。
+     * 注销当前会话：把 access 的 jti 加入 Redis 黑名单（TTL=token 剩余有效期），
+     * 并在调用方提供 refresh token 时撤销同一会话的 refresh jti。
      *
      * @param accessToken 来自请求头的原始 token；可为 {@code null}（此时使用
      *                    CurrentUserHolder 中已解析的 jti）
+     * @param refreshToken 当前会话的 refresh token；可为 {@code null}，用于兼容旧客户端
      */
-    void logout(String accessToken);
+    void logout(String accessToken, String refreshToken);
 
     /** 用 refresh token 换取新 access token；同时旋转 refresh。 */
     RefreshResultDTO refresh(String refreshToken);

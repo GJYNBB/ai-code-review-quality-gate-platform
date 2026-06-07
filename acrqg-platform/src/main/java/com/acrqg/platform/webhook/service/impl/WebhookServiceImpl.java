@@ -19,6 +19,7 @@ import com.acrqg.platform.webhook.parser.WebhookEventParser;
 import com.acrqg.platform.webhook.service.WebhookService;
 import com.acrqg.platform.webhook.verifier.SignatureVerifier;
 import com.acrqg.platform.webhook.verifier.SignatureVerifierFactory;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -112,25 +113,18 @@ public class WebhookServiceImpl implements WebhookService {
     }
 
     @Override
-    public WebhookHandleResult handle(Provider provider, HttpHeaders headers, String rawBody) {
+    public WebhookHandleResult handle(Provider provider, HttpHeaders headers, byte[] rawBody) {
         if (provider == null) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "provider 不能为空");
         }
         HttpHeaders safeHeaders = headers == null ? new HttpHeaders() : headers;
-        String body = rawBody == null ? "" : rawBody;
+        byte[] bodyBytes = rawBody == null ? new byte[0] : rawBody;
+        String body = new String(bodyBytes, StandardCharsets.UTF_8);
 
         // 1) 解析
         ParsedEvent event = parser.parse(provider, body, safeHeaders);
 
-        // 2) PING / OTHER 短路返回
-        if (event.eventType() == ParsedEvent.EventType.PING
-                || event.eventType() == ParsedEvent.EventType.OTHER) {
-            publishAudit(ACTION_RECEIVED, event,
-                    auditDetail("eventType", event.eventType().name(), "ignored", true));
-            return WebhookHandleResult.ignored("event ignored: " + event.eventType().name());
-        }
-
-        // 3) 查绑定
+        // 2) 查绑定：公开 webhook 入口必须先绑定到 ACTIVE 仓库，再验签；PING/OTHER 也不能绕过签名校验。
         if (event.repoUrl() == null || event.repoUrl().isBlank()) {
             log.warn("webhook payload missing repoUrl: provider={} eventId={}",
                     provider, event.eventId());
@@ -138,15 +132,16 @@ public class WebhookServiceImpl implements WebhookService {
                     auditDetail("reason", "missing repoUrl"));
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "repository not bound");
         }
-        RepositoryBinding binding = repositoryBindingMapper.selectByRepoUrl(event.repoUrl());
+        RepositoryBinding binding = repositoryBindingMapper.selectActiveByProviderAndRepoUrl(
+                provider.name(), event.repoUrl());
         if (binding == null) {
-            log.warn("webhook repo not bound: provider={} repoUrl={}", provider, event.repoUrl());
+            log.warn("webhook repo not actively bound: provider={} repoUrl={}", provider, event.repoUrl());
             publishAudit(ACTION_REJECTED, event,
-                    auditDetail("reason", "repository not bound", "repoUrl", event.repoUrl()));
+                    auditDetail("reason", "active repository not bound", "repoUrl", event.repoUrl()));
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "repository not bound");
         }
 
-        // 4) 解密 secret + 校验签名
+        // 3) 解密 secret + 校验签名
         String secret;
         try {
             secret = repositoryService.decryptWebhookSecret(binding.getProjectId());
@@ -160,7 +155,7 @@ public class WebhookServiceImpl implements WebhookService {
                     ErrorCode.WEBHOOK_SIGNATURE_INVALID.getMessage(), ex);
         }
         SignatureVerifier verifier = verifierFactory.forProvider(provider);
-        if (!verifier.verify(secret, body, safeHeaders)) {
+        if (!verifier.verify(secret, bodyBytes, safeHeaders)) {
             log.warn("webhook signature invalid: provider={} projectId={} repoUrl={} eventId={}",
                     provider, binding.getProjectId(), event.repoUrl(), event.eventId());
             publishAudit(ACTION_REJECTED, event,
@@ -169,6 +164,16 @@ public class WebhookServiceImpl implements WebhookService {
                             "repoUrl", event.repoUrl()));
             throw new BusinessException(ErrorCode.WEBHOOK_SIGNATURE_INVALID,
                     ErrorCode.WEBHOOK_SIGNATURE_INVALID.getMessage());
+        }
+
+        // 4) PING / OTHER 仅在绑定与签名都通过后忽略，避免公开端点被伪造请求刷日志。
+        if (event.eventType() == ParsedEvent.EventType.PING
+                || event.eventType() == ParsedEvent.EventType.OTHER) {
+            publishAudit(ACTION_RECEIVED, event,
+                    auditDetail("eventType", event.eventType().name(),
+                            "projectId", binding.getProjectId(),
+                            "ignored", true));
+            return WebhookHandleResult.ignored("event ignored: " + event.eventType().name());
         }
 
         // 5) 幂等键
@@ -237,15 +242,11 @@ public class WebhookServiceImpl implements WebhookService {
     /**
      * 把幂等键的 value 覆盖为真实的 taskId，TTL 保持 24h。
      *
-     * <p>{@link IdempotencyStore} 接口仅提供 {@code putIfAbsent}，没有 {@code set}
-     * 强写。这里先 {@link IdempotencyStore#delete} 再 {@link IdempotencyStore#putIfAbsent}
-     * 完成"覆盖"。极端并发下若另一个线程在 delete-set 间隙也尝试覆盖会出现
-     * 互相覆盖，但 value 都是同一个 taskId，结果一致——可接受。
+     * <p>使用单条 Redis SET 覆盖 value 并刷新 TTL，避免旧实现 delete+set 的竞态窗口。
      */
     private void rewriteIdempotencyValue(String key, String taskId) {
         try {
-            idempotencyStore.delete(key);
-            idempotencyStore.putIfAbsent(key, taskId, IDEMPOTENCY_TTL);
+            idempotencyStore.put(key, taskId, IDEMPOTENCY_TTL);
         } catch (RuntimeException ex) {
             // Redis 抖动：占位值仍为 "1"。命中分支会走"placeholder hit but task missing"
             // 兜底；不影响正确性。

@@ -78,7 +78,6 @@ public class ScannerProcessRunner {
             throw new ScannerProcessException("workdir not exist: " + workdir);
         }
         Path outputFile = generateOutputPath(workdir, cfg.getName());
-        String filesArg = (files == null || files.isEmpty()) ? "" : String.join(" ", files);
         String cmdTemplate = cfg.getCommand();
         if (cmdTemplate == null || cmdTemplate.isBlank()) {
             throw new ScannerProcessException("scanner command empty: " + cfg.getName());
@@ -86,13 +85,13 @@ public class ScannerProcessRunner {
         boolean hasOutputPlaceholder = cmdTemplate.contains("{output}");
         String resolved = cmdTemplate
                 .replace("{workdir}", workdir.toAbsolutePath().toString())
-                .replace("{file}", filesArg)
                 .replace("{output}", outputFile.toAbsolutePath().toString());
 
-        List<String> tokens = tokenize(resolved);
+        List<String> tokens = expandFilePlaceholder(tokenize(resolved), files);
         if (tokens.isEmpty()) {
             throw new ScannerProcessException("scanner command tokenized empty: " + cfg.getName());
         }
+        rejectShellOnlyOperators(tokens, cfg.getName());
         log.debug("ScannerProcessRunner: tool={} cmd={}", cfg.getName(), tokens);
 
         ProcessBuilder pb = new ProcessBuilder(tokens);
@@ -144,6 +143,53 @@ public class ScannerProcessRunner {
                     cfg.getName(), exitCode, stdout.length(), stderr.length(), actualOutput);
         }
         return new ScannerOutput(exitCode, stdout, stderr, actualOutput);
+    }
+
+    private static List<String> expandFilePlaceholder(List<String> tokens, List<String> files) {
+        List<String> result = new ArrayList<>();
+        for (String token : tokens) {
+            if ("{file}".equals(token)) {
+                if (files != null) {
+                    for (String file : files) {
+                        result.add(validateScannerFileArg(file));
+                    }
+                }
+            } else if (token.contains("{file}")) {
+                throw new ScannerProcessException("{file} placeholder must be a standalone argv token");
+            } else {
+                result.add(token);
+            }
+        }
+        return result;
+    }
+
+    private static String validateScannerFileArg(String file) {
+        if (file == null || file.isBlank()) {
+            throw new ScannerProcessException("blank scanner file argument");
+        }
+        String normalized = file.replace('\\', '/');
+        if (normalized.startsWith("/")
+                || normalized.contains("../")
+                || normalized.equals("..")
+                || normalized.startsWith("-")) {
+            throw new ScannerProcessException("unsafe scanner file argument: " + file);
+        }
+        for (int i = 0; i < normalized.length(); i++) {
+            if (Character.isISOControl(normalized.charAt(i))) {
+                throw new ScannerProcessException("unsafe scanner file argument contains control char: " + file);
+            }
+        }
+        return normalized;
+    }
+
+    private static void rejectShellOnlyOperators(List<String> tokens, String scannerName) {
+        for (String token : tokens) {
+            if (">".equals(token) || "<".equals(token) || "|".equals(token)
+                    || "&&".equals(token) || "||".equals(token) || ";".equals(token)) {
+                throw new ScannerProcessException(
+                        "scanner command contains shell-only operator '" + token + "': " + scannerName);
+            }
+        }
     }
 
     /** 在 workdir 下生成唯一的结果文件路径。 */

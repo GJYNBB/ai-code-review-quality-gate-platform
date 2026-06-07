@@ -153,6 +153,16 @@ public class ReviewTaskServiceImpl implements com.acrqg.platform.task.service.Re
         Long projectId = request.projectId();
         String prId = nullIfBlank(request.prId());
         String commitSha = nullIfBlank(request.commitSha());
+        AuthenticatedUser caller = CurrentUserHolder.optional().orElse(null);
+
+        // 公开 webhook 会在 WebhookService 通过绑定与签名校验得到 projectId；
+        // 其他入口必须要求当前用户至少是项目成员，避免任意登录用户对任意项目创建任务。
+        if (trigger != TriggerType.WEBHOOK) {
+            if (caller == null || !permissionEvaluator.isProjectMember(caller.id(), projectId)) {
+                throw new BusinessException(ErrorCode.PERMISSION_DENIED,
+                        ErrorCode.PERMISSION_DENIED.getMessage());
+            }
+        }
 
         // 1) Idempotency-Key 命中：直接返回上一次的任务
         String idemFullKey = null;
@@ -192,7 +202,6 @@ public class ReviewTaskServiceImpl implements com.acrqg.platform.task.service.Re
         // 3) 生成 task_no 并插入
         String taskNo = generateTaskNo();
 
-        AuthenticatedUser caller = CurrentUserHolder.optional().orElse(null);
         Long createdBy = caller != null ? caller.id() : null;
 
         ReviewTask task = new ReviewTask();

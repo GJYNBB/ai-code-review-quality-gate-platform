@@ -16,11 +16,7 @@ import { CopyDocument, Edit, Refresh } from '@element-plus/icons-vue'
 
 import * as repositoryApi from '@/api/repository'
 import { ApiBusinessError } from '@/api/http'
-import type {
-  Provider,
-  RepositoryBindRequest,
-  RepositoryBindingDTO,
-} from '@/types/api'
+import type { Provider, RepositoryBindRequest, RepositoryBindingDTO } from '@/types/api'
 
 const props = defineProps<{
   projectId: number
@@ -182,7 +178,7 @@ watch(
 </script>
 
 <template>
-  <div class="repository-binding-tab" v-loading="loading">
+  <div v-loading="loading" class="repository-binding-tab">
     <!-- 已绑定 + 只读：展示绑定信息与 webhookUrl -->
     <template v-if="binding && !editMode">
       <el-descriptions :column="2" border>
@@ -192,7 +188,12 @@ watch(
           <el-tag v-else type="info" size="small">{{ binding.status }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="仓库地址" :span="2">
-          <el-link :href="binding.repoUrl" target="_blank" :underline="false">
+          <el-link
+            :href="binding.repoUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            :underline="false"
+          >
             {{ binding.repoUrl }}
           </el-link>
         </el-descriptions-item>

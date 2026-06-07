@@ -1,11 +1,15 @@
 package com.acrqg.platform.task.worker;
 
+import com.acrqg.platform.infra.redis.RedisStreamPublisher;
 import com.acrqg.platform.task.domain.ReviewTask;
 import com.acrqg.platform.task.domain.ReviewTaskStatus;
+import com.acrqg.platform.task.service.impl.ReviewTaskServiceImpl;
 import com.acrqg.platform.task.log.TaskLogger;
 import com.acrqg.platform.task.repository.ReviewTaskMapper;
 import com.acrqg.platform.task.service.ReviewTaskService;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -40,15 +44,21 @@ public class TaskRecoveryRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(TaskRecoveryRunner.class);
 
+    private static final long PENDING_REENQUEUE_AFTER_SECONDS = 60L;
+    private static final int PENDING_REENQUEUE_LIMIT = 200;
+
     private final ReviewTaskMapper reviewTaskMapper;
     private final ReviewTaskService reviewTaskService;
+    private final RedisStreamPublisher redisStreamPublisher;
     private final TaskLogger taskLogger;
 
     public TaskRecoveryRunner(ReviewTaskMapper reviewTaskMapper,
                               ReviewTaskService reviewTaskService,
+                              RedisStreamPublisher redisStreamPublisher,
                               TaskLogger taskLogger) {
         this.reviewTaskMapper = reviewTaskMapper;
         this.reviewTaskService = reviewTaskService;
+        this.redisStreamPublisher = redisStreamPublisher;
         this.taskLogger = taskLogger;
     }
 
@@ -60,10 +70,12 @@ public class TaskRecoveryRunner implements ApplicationRunner {
         } catch (RuntimeException ex) {
             // DB 连接异常 / 表不存在等：仅记 ERROR，让 Worker 仍然启动消费新任务
             log.error("TaskRecoveryRunner.findStuckTasks failed: err={}", ex.toString(), ex);
+            reenqueueOldPendingTasks();
             return;
         }
         if (stuck == null || stuck.isEmpty()) {
             log.info("TaskRecoveryRunner: no stuck tasks");
+            reenqueueOldPendingTasks();
             return;
         }
         int recovered = 0;
@@ -83,5 +95,37 @@ public class TaskRecoveryRunner implements ApplicationRunner {
             }
         }
         log.info("TaskRecoveryRunner: recovered {}/{} stuck tasks", recovered, stuck.size());
+        reenqueueOldPendingTasks();
+    }
+
+    private void reenqueueOldPendingTasks() {
+        List<ReviewTask> pending;
+        try {
+            pending = reviewTaskMapper.findOldPendingTasks(PENDING_REENQUEUE_AFTER_SECONDS,
+                    PENDING_REENQUEUE_LIMIT);
+        } catch (RuntimeException ex) {
+            log.error("TaskRecoveryRunner.findOldPendingTasks failed: err={}", ex.toString(), ex);
+            return;
+        }
+        if (pending == null || pending.isEmpty()) {
+            log.info("TaskRecoveryRunner: no old PENDING tasks to re-enqueue");
+            return;
+        }
+        int enqueued = 0;
+        for (ReviewTask t : pending) {
+            try {
+                Map<String, String> fields = new LinkedHashMap<>();
+                fields.put("taskId", String.valueOf(t.getId()));
+                fields.put("attempt", String.valueOf(t.getAttempt() == null ? 1 : t.getAttempt()));
+                redisStreamPublisher.enqueue(ReviewTaskServiceImpl.STREAM_KEY, fields);
+                taskLogger.warn(t.getId(), ReviewTaskStatus.PENDING.name(),
+                        "old PENDING task re-enqueued by recovery runner");
+                enqueued++;
+            } catch (RuntimeException ex) {
+                log.warn("TaskRecoveryRunner: failed to re-enqueue pending taskId={} err={}",
+                        t.getId(), ex.toString());
+            }
+        }
+        log.info("TaskRecoveryRunner: re-enqueued {}/{} old PENDING tasks", enqueued, pending.size());
     }
 }

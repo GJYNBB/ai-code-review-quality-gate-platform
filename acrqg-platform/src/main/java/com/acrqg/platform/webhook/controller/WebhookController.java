@@ -81,13 +81,13 @@ public class WebhookController {
                     + " 全流程必须在 3 秒内返回（R7.6），耗时操作由 Stream 异步消费。")
     @PostMapping(value = "/git", consumes = MediaType.ALL_VALUE)
     public ApiResponse<WebhookHandleResult> receive(
-            @RequestBody(required = false) String rawBody,
+            @RequestBody(required = false) byte[] rawBody,
             HttpServletRequest request) {
         HttpHeaders headers = collectHeaders(request);
         Provider provider = detectProvider(headers);
         if (log.isDebugEnabled()) {
             log.debug("webhook received: provider={} contentLength={}",
-                    provider, rawBody == null ? 0 : rawBody.length());
+                    provider, rawBody == null ? 0 : rawBody.length);
         }
         WebhookHandleResult result = webhookService.handle(provider, headers, rawBody);
         return ApiResponse.success(result);

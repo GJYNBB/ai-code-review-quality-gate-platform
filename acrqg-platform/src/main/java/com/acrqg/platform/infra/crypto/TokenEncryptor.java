@@ -30,6 +30,10 @@ public class TokenEncryptor {
 
     private static final Logger log = LoggerFactory.getLogger(TokenEncryptor.class);
 
+    /** 源码中保留的本地开发默认密钥；启动期必须显式拒绝。 */
+    private static final String DEV_DEFAULT_TOKEN_KEY =
+            "dev-change-me-32-bytes-token-encryption-key!!";
+
     private final String tokenEncryptionKey;
 
     private AesGcmCipher cipher;
@@ -41,6 +45,10 @@ public class TokenEncryptor {
     /** 启动期构造底层加密器；任何失败均阻止上下文启动。 */
     @PostConstruct
     void init() {
+        if (DEV_DEFAULT_TOKEN_KEY.equals(tokenEncryptionKey)) {
+            throw new IllegalStateException(
+                    "app.security.token-encryption-key uses the known development default; set TOKEN_ENCRYPTION_KEY explicitly");
+        }
         this.cipher = new AesGcmCipher(tokenEncryptionKey);
         log.info("TokenEncryptor initialized (AES-GCM-256, PBKDF2-HMAC-SHA256)");
     }

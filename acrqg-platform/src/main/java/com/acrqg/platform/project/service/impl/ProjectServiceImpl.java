@@ -149,12 +149,19 @@ public class ProjectServiceImpl implements ProjectService {
         int offset = (page - 1) * pageSize;
         String keyword = trimToNull(q.keyword());
 
-        long total = projectMapper.countByKeyword(keyword);
+        AuthenticatedUser caller = CurrentUserHolder.requireCurrent();
+        boolean systemAdmin = caller.hasRole("SYSTEM_ADMIN");
+
+        long total = systemAdmin
+                ? projectMapper.countByKeyword(keyword)
+                : projectMapper.countVisibleByKeyword(caller.id(), keyword);
         List<ProjectDTO> items;
         if (total == 0) {
             items = Collections.emptyList();
         } else {
-            List<ProjectListRow> rows = projectMapper.pageList(keyword, pageSize, offset);
+            List<ProjectListRow> rows = systemAdmin
+                    ? projectMapper.pageList(keyword, pageSize, offset)
+                    : projectMapper.pageVisibleList(caller.id(), keyword, pageSize, offset);
             items = new ArrayList<>(rows.size());
             for (ProjectListRow row : rows) {
                 items.add(toDTO(row));
