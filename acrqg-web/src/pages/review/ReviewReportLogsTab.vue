@@ -126,7 +126,7 @@ watch(() => props.taskId, load)
       </div>
     </el-card>
 
-    <el-card shadow="never" class="logs-tab__table" v-loading="loading">
+    <el-card v-loading="loading" shadow="never" class="logs-tab__table">
       <el-table :data="items" stripe>
         <el-table-column type="expand">
           <template #default="{ row }">

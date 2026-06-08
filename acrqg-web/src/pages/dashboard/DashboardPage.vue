@@ -62,8 +62,12 @@ const stats = computed(() => {
   const points: TrendPointDTO[] = trendData.value?.points ?? []
   const totals = trendData.value?.totals
   const taskCount = totals?.totalTasks ?? points.reduce((sum, p) => sum + (p.taskCount ?? 0), 0)
-  const passRate = totals?.overallPassRate != null ? toNumber(totals.overallPassRate) : computeAvgPassRate(points)
-  const avgScore = totals?.overallAvgScore != null ? toNumber(totals.overallAvgScore) : computeAvg(points, 'avgScore')
+  const passRate =
+    totals?.overallPassRate != null ? toNumber(totals.overallPassRate) : computeAvgPassRate(points)
+  const avgScore =
+    totals?.overallAvgScore != null
+      ? toNumber(totals.overallAvgScore)
+      : computeAvg(points, 'avgScore')
   const avgDuration = computeAvg(points, 'avgDurationSeconds')
   return {
     taskCount,
@@ -201,12 +205,7 @@ function handleProjectChange(id: number | null) {
           style="width: 240px"
           @change="handleProjectChange"
         >
-          <el-option
-            v-for="p in projects"
-            :key="p.id"
-            :label="p.name"
-            :value="p.id"
-          />
+          <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
         </el-select>
         <span class="filters-row__label">时间范围</span>
         <el-date-picker
@@ -254,13 +253,15 @@ function handleProjectChange(id: number | null) {
           <el-card shadow="never">
             <div class="stat-card">
               <span class="stat-card__title">平均耗时</span>
-              <span class="stat-card__value">{{ formatDurationHuman(stats.avgDurationSeconds) }}</span>
+              <span class="stat-card__value">{{
+                formatDurationHuman(stats.avgDurationSeconds)
+              }}</span>
             </div>
           </el-card>
         </el-col>
       </el-row>
 
-      <el-card shadow="never" class="dashboard-page__chart" v-loading="loadingTrend">
+      <el-card v-loading="loadingTrend" shadow="never" class="dashboard-page__chart">
         <template #header>
           <span>质量趋势</span>
         </template>
@@ -270,7 +271,7 @@ function handleProjectChange(id: number | null) {
         <VChart v-else :option="chartOption" autoresize style="height: 320px" />
       </el-card>
 
-      <el-card shadow="never" class="dashboard-page__risk" v-loading="loadingRisk">
+      <el-card v-loading="loadingRisk" shadow="never" class="dashboard-page__risk">
         <template #header>
           <span>高风险文件 Top 10</span>
         </template>

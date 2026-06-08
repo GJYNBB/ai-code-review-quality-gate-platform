@@ -6,6 +6,16 @@ import type { LoginRequest, LoginResultDTO, RefreshResultDTO, UserDTO } from '@/
  * baseURL 已包含 `/api/v1`，故此处只写资源路径。
  */
 
+/** GET /auth/csrf —— 写入 XSRF-TOKEN Cookie */
+export function csrf(): Promise<void> {
+  return request<void>({
+    method: 'GET',
+    url: '/auth/csrf',
+    skipAuth: true,
+    skipErrorMessage: true,
+  })
+}
+
 /** POST /auth/login */
 export function login(req: LoginRequest, config?: ExtendedRequestConfig): Promise<LoginResultDTO> {
   return request<LoginResultDTO>({
@@ -19,22 +29,23 @@ export function login(req: LoginRequest, config?: ExtendedRequestConfig): Promis
   })
 }
 
-/** POST /auth/logout */
-export function logout(refreshToken?: string): Promise<void> {
+/** POST /auth/logout —— refresh token 由 HttpOnly Cookie 自动携带 */
+export async function logout(): Promise<void> {
+  await csrf()
   return request<void>({
     method: 'POST',
     url: '/auth/logout',
-    data: refreshToken ? { refreshToken } : undefined,
   })
 }
 
-/** POST /auth/refresh */
-export function refresh(refreshToken: string): Promise<RefreshResultDTO> {
+/** POST /auth/refresh —— refresh token 由 HttpOnly Cookie 自动携带 */
+export async function refresh(): Promise<RefreshResultDTO> {
+  await csrf()
   return request<RefreshResultDTO>({
     method: 'POST',
     url: '/auth/refresh',
-    data: { refreshToken },
     skipAuth: true,
+    skipErrorMessage: true,
   })
 }
 

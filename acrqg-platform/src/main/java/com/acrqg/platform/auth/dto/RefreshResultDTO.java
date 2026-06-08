@@ -1,5 +1,6 @@
 package com.acrqg.platform.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -17,7 +18,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "刷新令牌结果（R1.5）")
 public record RefreshResultDTO(
         @Schema(description = "新签发的访问令牌") String accessToken,
-        @Schema(description = "旋转后的刷新令牌") String refreshToken,
+        @JsonIgnore
+        @Schema(description = "旋转后的刷新令牌通过 HttpOnly Cookie 返回，不序列化到 JSON 响应体") String refreshToken,
         @Schema(description = "accessToken 有效期（秒）") long expiresIn
 ) {
 }

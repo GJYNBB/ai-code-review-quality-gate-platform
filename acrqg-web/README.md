@@ -6,19 +6,19 @@ AI 辅助代码评审与质量门禁平台 — 前端 SPA。
 
 ## 1. 技术栈
 
-| 维度 | 选型 | 版本 |
-|---|---|---|
-| 框架 | [Vue 3](https://vuejs.org/) | ^3.4 |
-| 构建 | [Vite](https://vitejs.dev/) | ^5 |
-| 语言 | TypeScript | ^5.4 |
-| UI 组件 | [Element Plus](https://element-plus.org/) + `@element-plus/icons-vue` | ^2.8 |
-| 路由 | [Vue Router](https://router.vuejs.org/) | ^4 |
-| 状态 | [Pinia](https://pinia.vuejs.org/) | ^2 |
-| HTTP | [axios](https://axios-http.com/) | ^1.7 |
-| 时间 | [dayjs](https://day.js.org/) | ^1.11 |
-| 图表 | [echarts](https://echarts.apache.org/) + [vue-echarts](https://github.com/ecomfe/vue-echarts) | ^5 / ^7 |
-| 测试 | [Vitest](https://vitest.dev/) + `@vue/test-utils` + `jsdom` | ^2 |
-| 代码风格 | ESLint + `eslint-plugin-vue` + `@vue/eslint-config-typescript` + Prettier | — |
+| 维度     | 选型                                                                                          | 版本    |
+| -------- | --------------------------------------------------------------------------------------------- | ------- |
+| 框架     | [Vue 3](https://vuejs.org/)                                                                   | ^3.4    |
+| 构建     | [Vite](https://vitejs.dev/)                                                                   | ^5      |
+| 语言     | TypeScript                                                                                    | ^5.4    |
+| UI 组件  | [Element Plus](https://element-plus.org/) + `@element-plus/icons-vue`                         | ^2.8    |
+| 路由     | [Vue Router](https://router.vuejs.org/)                                                       | ^4      |
+| 状态     | [Pinia](https://pinia.vuejs.org/)                                                             | ^2      |
+| HTTP     | [axios](https://axios-http.com/)                                                              | ^1.7    |
+| 时间     | [dayjs](https://day.js.org/)                                                                  | ^1.11   |
+| 图表     | [echarts](https://echarts.apache.org/) + [vue-echarts](https://github.com/ecomfe/vue-echarts) | ^5 / ^7 |
+| 测试     | [Vitest](https://vitest.dev/) + `@vue/test-utils` + `jsdom`                                   | ^2      |
+| 代码风格 | ESLint + `eslint-plugin-vue` + `@vue/eslint-config-typescript` + Prettier                     | —       |
 
 详见 [`package.json`](./package.json) 中的精确版本。
 
@@ -87,10 +87,10 @@ npm run preview
 
 前端通过 Vite `import.meta.env` 读取以 `VITE_` 开头的变量。可在项目根目录创建 `.env.local`（已被 `.gitignore` 忽略）。
 
-| 变量 | 用途 | 默认 |
-|---|---|---|
-| `VITE_API_BASE_URL` | 直连后端绝对地址；为空时通过 vite 代理走相对路径 `/api/v1` | （空） |
-| `VITE_APP_TITLE` | 页面标题，浏览器标签栏与登录页头部 | 智评 — AI 代码评审与质量门禁平台 |
+| 变量                | 用途                                                       | 默认                             |
+| ------------------- | ---------------------------------------------------------- | -------------------------------- |
+| `VITE_API_BASE_URL` | 直连后端绝对地址；为空时通过 vite 代理走相对路径 `/api/v1` | （空）                           |
+| `VITE_APP_TITLE`    | 页面标题，浏览器标签栏与登录页头部                         | 智评 — AI 代码评审与质量门禁平台 |
 
 部署到生产后，`/api/` 由容器内 [`nginx.conf`](./nginx.conf) 反代到 `http://backend:8080`，与 [`docker-compose.yml`](../docker-compose.yml) 中 `backend` 服务对齐。
 
@@ -120,7 +120,7 @@ npm run preview
 
 ## 8. 后续批次预告
 
-| 批次 | 交付内容 | 跟踪文件 |
-|---|---|---|
-| B0-B.7 (可选)  | 前端骨架 Vitest 单元测试（http 拦截器 / router 守卫）   | `tests/unit/*.spec.ts` |
-| B5-A           | UI-001 ~ UI-010 全部业务页面，按 IT-2 / IT-3 / IT-4 / IT-5 里程碑分阶段拼装 | `src/pages/*` |
+| 批次          | 交付内容                                                                    | 跟踪文件               |
+| ------------- | --------------------------------------------------------------------------- | ---------------------- |
+| B0-B.7 (可选) | 前端骨架 Vitest 单元测试（http 拦截器 / router 守卫）                       | `tests/unit/*.spec.ts` |
+| B5-A          | UI-001 ~ UI-010 全部业务页面，按 IT-2 / IT-3 / IT-4 / IT-5 里程碑分阶段拼装 | `src/pages/*`          |

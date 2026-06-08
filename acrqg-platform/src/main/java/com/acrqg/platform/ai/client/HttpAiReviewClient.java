@@ -4,6 +4,7 @@ import com.acrqg.platform.ai.exception.AiServiceUnavailableException;
 import com.acrqg.platform.ai.schema.AiReviewSchemaValidator;
 import com.acrqg.platform.common.api.ErrorCode;
 import com.acrqg.platform.common.exception.BusinessException;
+import com.acrqg.platform.infra.net.GuardedRestClientFactory;
 import com.acrqg.platform.infra.net.OutboundUrlGuard;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,8 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -157,12 +156,11 @@ public class HttpAiReviewClient implements AiReviewClient {
     // ---------------------------------------------------------------------
 
     private static RestClient buildClient(int timeoutSeconds) {
-        SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
-        rf.setConnectTimeout(Duration.ofMillis(CONNECT_TIMEOUT_MILLIS));
         // 读超时直接使用请求级 timeoutSeconds（兜底 10s 上限保护）
         int readMs = Math.max(timeoutSeconds, 1) * 1_000;
-        rf.setReadTimeout(Duration.ofMillis(readMs));
-        return RestClient.builder().requestFactory(rf).build();
+        return GuardedRestClientFactory.build(
+                Duration.ofMillis(CONNECT_TIMEOUT_MILLIS),
+                Duration.ofMillis(readMs));
     }
 
     private static Map<String, Object> buildBody(AiReviewRequest req) {

@@ -73,7 +73,7 @@ async function handleLogout() {
   }
 
   try {
-    await logoutApi(authStore.refreshToken ?? undefined)
+    await logoutApi()
   } catch {
     /* best-effort */
   }

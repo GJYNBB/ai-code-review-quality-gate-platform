@@ -22,6 +22,7 @@ hs_err_pid*
 node_modules/
 dist/
 dist-ssr/
+*.tsbuildinfo
 .npm
 .pnpm-store/
 .yarn/cache/

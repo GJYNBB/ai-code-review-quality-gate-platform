@@ -19,12 +19,7 @@ import * as userApi from '@/api/user'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyRole } from '@/utils/permission'
 import { formatDateTime } from '@/utils/format'
-import type {
-  AddMemberRequest,
-  ProjectMemberDTO,
-  ProjectRole,
-  UserDTO,
-} from '@/types/api'
+import type { AddMemberRequest, ProjectMemberDTO, ProjectRole, UserDTO } from '@/types/api'
 
 const props = defineProps<{
   projectId: number
@@ -98,10 +93,7 @@ interface UserSuggestion {
   user: UserDTO
 }
 
-async function queryUserAsync(
-  keyword: string,
-  cb: (data: UserSuggestion[]) => void,
-) {
+async function queryUserAsync(keyword: string, cb: (data: UserSuggestion[]) => void) {
   const trimmed = keyword.trim()
   if (!trimmed) {
     cb([])
@@ -180,16 +172,11 @@ watch(
 </script>
 
 <template>
-  <div class="member-manage-tab" v-loading="loading">
+  <div v-loading="loading" class="member-manage-tab">
     <div class="member-manage-tab__toolbar">
       <span>共 {{ members.length }} 位成员</span>
       <div class="member-manage-tab__spacer" />
-      <el-button
-        v-if="canManage"
-        type="primary"
-        :icon="Plus"
-        @click="openAddDialog"
-      >
+      <el-button v-if="canManage" type="primary" :icon="Plus" @click="openAddDialog">
         添加成员
       </el-button>
     </div>
@@ -222,7 +209,12 @@ watch(
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" title="添加项目成员" width="480px" :close-on-click-modal="false">
+    <el-dialog
+      v-model="dialogVisible"
+      title="添加项目成员"
+      width="480px"
+      :close-on-click-modal="false"
+    >
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-form-item label="用户" prop="userId">
           <el-autocomplete

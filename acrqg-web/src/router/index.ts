@@ -20,12 +20,12 @@ import type { Role } from '@/types/api'
  * 前端路由层只能把关全局角色，进入页面后由组件按返回结果决定可见性。
  */
 declare module 'vue-router' {
-    interface RouteMeta {
-        public?: boolean
-        requiredRoles?: Role[]
-        title?: string
-        placeholderDescription?: string
-    }
+  interface RouteMeta {
+    public?: boolean
+    requiredRoles?: Role[]
+    title?: string
+    placeholderDescription?: string
+  }
 }
 
 // 占位组件：B5-A.8~13 尚未实现的页面继续保留占位
@@ -68,199 +68,199 @@ const AuditLogPage = () => import('@/pages/admin/AuditLogPage.vue')
  *  /:pathMatch(.*)*                                404（公开）
  */
 export const routes: RouteRecordRaw[] = [
-    // ---------------- 公开路由 ----------------
-    {
-        path: '/login',
-        component: BlankLayout,
-        meta: { public: true },
-        children: [
-            {
-                path: '',
-                name: 'login',
-                component: LoginPage,
-                meta: { public: true, title: '登录' },
-            },
-        ],
-    },
-    {
-        path: '/forbidden',
-        component: BlankLayout,
-        meta: { public: true },
-        children: [
-            {
-                path: '',
-                name: 'forbidden',
-                component: ForbiddenPage,
-                meta: { public: true, title: '无权访问' },
-            },
-        ],
-    },
+  // ---------------- 公开路由 ----------------
+  {
+    path: '/login',
+    component: BlankLayout,
+    meta: { public: true },
+    children: [
+      {
+        path: '',
+        name: 'login',
+        component: LoginPage,
+        meta: { public: true, title: '登录' },
+      },
+    ],
+  },
+  {
+    path: '/forbidden',
+    component: BlankLayout,
+    meta: { public: true },
+    children: [
+      {
+        path: '',
+        name: 'forbidden',
+        component: ForbiddenPage,
+        meta: { public: true, title: '无权访问' },
+      },
+    ],
+  },
 
-    // ---------------- 业务路由（DefaultLayout 包裹）----------------
-    {
-        path: '/',
-        component: DefaultLayout,
-        redirect: '/dashboard',
-        children: [
-            {
-                path: 'dashboard',
-                name: 'dashboard',
-                component: DashboardPage,
-                meta: { public: false, requiredRoles: [], title: '工作台' },
-            },
-            {
-                path: 'projects',
-                name: 'project-list',
-                component: ProjectListPage,
-                meta: { public: false, requiredRoles: [], title: '项目列表' },
-            },
-            {
-                path: 'projects/:projectId',
-                name: 'project-detail',
-                component: ProjectDetailPage,
-                meta: { public: false, requiredRoles: [], title: '项目详情' },
-            },
-            {
-                path: 'projects/:projectId/repository',
-                name: 'project-repository',
-                component: Placeholder,
-                meta: {
-                    public: false,
-                    requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
-                    title: '仓库绑定',
-                    placeholderDescription: 'UI-005 仓库绑定（详情页内嵌 RepositoryBindingTab，B5-A.5）',
-                },
-            },
-            {
-                path: 'projects/:projectId/members',
-                name: 'project-members',
-                component: Placeholder,
-                meta: {
-                    public: false,
-                    requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
-                    title: '成员管理',
-                    placeholderDescription: 'UI-004 成员管理（详情页内嵌 MemberManageTab，B5-A.6）',
-                },
-            },
-            {
-                path: 'projects/:projectId/quality-gate',
-                name: 'project-quality-gate',
-                component: QualityGatePage,
-                meta: {
-                    public: false,
-                    requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
-                    title: '质量门禁',
-                },
-            },
-            {
-                path: 'review-tasks',
-                name: 'review-task-list',
-                component: ReviewTaskListPage,
-                meta: {
-                    public: false,
-                    requiredRoles: [],
-                    title: '评审任务',
-                },
-            },
-            {
-                path: 'review-tasks/:taskId/report',
-                name: 'review-task-report',
-                component: ReviewReportPage,
-                meta: {
-                    public: false,
-                    requiredRoles: [],
-                    title: '评审报告',
-                },
-            },
-            {
-                path: 'issues/:issueId',
-                name: 'issue-detail',
-                component: Placeholder,
-                meta: {
-                    public: false,
-                    requiredRoles: [],
-                    title: '问题详情',
-                    placeholderDescription: 'UI-008 问题详情抽屉将在 B5-A.10 落地',
-                },
-            },
-            {
-                path: 'notifications',
-                name: 'notification-list',
-                component: NotificationListPage,
-                meta: {
-                    public: false,
-                    requiredRoles: [],
-                    title: '通知中心',
-                },
-            },
-            {
-                path: 'admin/users',
-                name: 'admin-users',
-                component: UserManagePage,
-                meta: {
-                    public: false,
-                    requiredRoles: ['SYSTEM_ADMIN'],
-                    title: '用户管理',
-                },
-            },
-            {
-                path: 'admin/model-configs',
-                name: 'admin-model-configs',
-                component: ModelConfigPage,
-                meta: {
-                    public: false,
-                    requiredRoles: ['SYSTEM_ADMIN'],
-                    title: '模型配置',
-                },
-            },
-            {
-                path: 'admin/scanners',
-                name: 'admin-scanners',
-                component: ScannerConfigPage,
-                meta: {
-                    public: false,
-                    requiredRoles: ['SYSTEM_ADMIN'],
-                    title: '扫描器配置',
-                },
-            },
-            {
-                path: 'admin/system-params',
-                name: 'admin-system-params',
-                component: SystemParamPage,
-                meta: {
-                    public: false,
-                    requiredRoles: ['SYSTEM_ADMIN'],
-                    title: '系统参数',
-                },
-            },
-            {
-                path: 'admin/audit-logs',
-                name: 'admin-audit-logs',
-                component: AuditLogPage,
-                meta: {
-                    public: false,
-                    requiredRoles: ['SYSTEM_ADMIN'],
-                    title: '审计日志',
-                },
-            },
-        ],
-    },
+  // ---------------- 业务路由（DefaultLayout 包裹）----------------
+  {
+    path: '/',
+    component: DefaultLayout,
+    redirect: '/dashboard',
+    children: [
+      {
+        path: 'dashboard',
+        name: 'dashboard',
+        component: DashboardPage,
+        meta: { public: false, requiredRoles: [], title: '工作台' },
+      },
+      {
+        path: 'projects',
+        name: 'project-list',
+        component: ProjectListPage,
+        meta: { public: false, requiredRoles: [], title: '项目列表' },
+      },
+      {
+        path: 'projects/:projectId',
+        name: 'project-detail',
+        component: ProjectDetailPage,
+        meta: { public: false, requiredRoles: [], title: '项目详情' },
+      },
+      {
+        path: 'projects/:projectId/repository',
+        name: 'project-repository',
+        component: Placeholder,
+        meta: {
+          public: false,
+          requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
+          title: '仓库绑定',
+          placeholderDescription: 'UI-005 仓库绑定（详情页内嵌 RepositoryBindingTab，B5-A.5）',
+        },
+      },
+      {
+        path: 'projects/:projectId/members',
+        name: 'project-members',
+        component: Placeholder,
+        meta: {
+          public: false,
+          requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
+          title: '成员管理',
+          placeholderDescription: 'UI-004 成员管理（详情页内嵌 MemberManageTab，B5-A.6）',
+        },
+      },
+      {
+        path: 'projects/:projectId/quality-gate',
+        name: 'project-quality-gate',
+        component: QualityGatePage,
+        meta: {
+          public: false,
+          requiredRoles: ['PROJECT_ADMIN', 'SYSTEM_ADMIN'],
+          title: '质量门禁',
+        },
+      },
+      {
+        path: 'review-tasks',
+        name: 'review-task-list',
+        component: ReviewTaskListPage,
+        meta: {
+          public: false,
+          requiredRoles: [],
+          title: '评审任务',
+        },
+      },
+      {
+        path: 'review-tasks/:taskId/report',
+        name: 'review-task-report',
+        component: ReviewReportPage,
+        meta: {
+          public: false,
+          requiredRoles: [],
+          title: '评审报告',
+        },
+      },
+      {
+        path: 'issues/:issueId',
+        name: 'issue-detail',
+        component: Placeholder,
+        meta: {
+          public: false,
+          requiredRoles: [],
+          title: '问题详情',
+          placeholderDescription: 'UI-008 问题详情抽屉将在 B5-A.10 落地',
+        },
+      },
+      {
+        path: 'notifications',
+        name: 'notification-list',
+        component: NotificationListPage,
+        meta: {
+          public: false,
+          requiredRoles: [],
+          title: '通知中心',
+        },
+      },
+      {
+        path: 'admin/users',
+        name: 'admin-users',
+        component: UserManagePage,
+        meta: {
+          public: false,
+          requiredRoles: ['SYSTEM_ADMIN'],
+          title: '用户管理',
+        },
+      },
+      {
+        path: 'admin/model-configs',
+        name: 'admin-model-configs',
+        component: ModelConfigPage,
+        meta: {
+          public: false,
+          requiredRoles: ['SYSTEM_ADMIN'],
+          title: '模型配置',
+        },
+      },
+      {
+        path: 'admin/scanners',
+        name: 'admin-scanners',
+        component: ScannerConfigPage,
+        meta: {
+          public: false,
+          requiredRoles: ['SYSTEM_ADMIN'],
+          title: '扫描器配置',
+        },
+      },
+      {
+        path: 'admin/system-params',
+        name: 'admin-system-params',
+        component: SystemParamPage,
+        meta: {
+          public: false,
+          requiredRoles: ['SYSTEM_ADMIN'],
+          title: '系统参数',
+        },
+      },
+      {
+        path: 'admin/audit-logs',
+        name: 'admin-audit-logs',
+        component: AuditLogPage,
+        meta: {
+          public: false,
+          requiredRoles: ['SYSTEM_ADMIN'],
+          title: '审计日志',
+        },
+      },
+    ],
+  },
 
-    // ---------------- 兜底 ----------------
-    {
-        path: '/:pathMatch(.*)*',
-        name: 'not-found',
-        component: NotFoundPage,
-        meta: { public: true, title: '页面不存在' },
-    },
+  // ---------------- 兜底 ----------------
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: NotFoundPage,
+    meta: { public: true, title: '页面不存在' },
+  },
 ]
 
 const router = createRouter({
-    history: createWebHistory(),
-    routes,
-    scrollBehavior(_to, _from, savedPosition) {
-        return savedPosition ?? { top: 0 }
-    },
+  history: createWebHistory(),
+  routes,
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition ?? { top: 0 }
+  },
 })
 
 registerRouterGuards(router)

@@ -18,16 +18,14 @@ import * as projectApi from '@/api/project'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyRole } from '@/utils/permission'
 import { formatDateTime } from '@/utils/format'
-import type {
-  ProjectCreateRequest,
-  ProjectDTO,
-  ProjectLanguage,
-} from '@/types/api'
+import type { ProjectCreateRequest, ProjectDTO, ProjectLanguage } from '@/types/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const canCreateProject = computed(() => hasAnyRole(authStore.roles, ['PROJECT_ADMIN', 'SYSTEM_ADMIN']))
+const canCreateProject = computed(() =>
+  hasAnyRole(authStore.roles, ['PROJECT_ADMIN', 'SYSTEM_ADMIN']),
+)
 
 const loading = ref(false)
 const items = ref<ProjectDTO[]>([])
@@ -166,7 +164,7 @@ onMounted(() => {
       </div>
     </el-card>
 
-    <el-card shadow="never" class="project-list-page__table" v-loading="loading">
+    <el-card v-loading="loading" shadow="never" class="project-list-page__table">
       <el-table :data="items" stripe @row-click="viewDetail">
         <el-table-column prop="name" label="项目名称" min-width="200">
           <template #default="{ row }">
@@ -201,7 +199,12 @@ onMounted(() => {
     <el-dialog v-model="dialogVisible" title="新建项目" width="520px" :close-on-click-modal="false">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-form-item label="项目名称" prop="name">
-          <el-input v-model="form.name" placeholder="如：智评平台后端" maxlength="128" show-word-limit />
+          <el-input
+            v-model="form.name"
+            placeholder="如：智评平台后端"
+            maxlength="128"
+            show-word-limit
+          />
         </el-form-item>
         <el-form-item label="默认分支" prop="defaultBranch">
           <el-input v-model="form.defaultBranch" placeholder="main" maxlength="128" />

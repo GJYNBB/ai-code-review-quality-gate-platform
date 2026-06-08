@@ -167,7 +167,7 @@ watch(() => props.taskId, load)
       </div>
     </el-card>
 
-    <el-card shadow="never" class="issues-tab__table" v-loading="loading">
+    <el-card v-loading="loading" shadow="never" class="issues-tab__table">
       <el-table :data="items" stripe @row-click="openDrawer">
         <el-table-column label="文件 / 行" min-width="280" show-overflow-tooltip>
           <template #default="{ row }">

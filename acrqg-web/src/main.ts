@@ -11,7 +11,7 @@ const app = createApp(App)
 
 // 注册 Element Plus 图标（按需在模板中通过 component 标签使用）
 for (const [iconName, iconComponent] of Object.entries(ElementPlusIconsVue)) {
-    app.component(iconName, iconComponent as never)
+  app.component(iconName, iconComponent as never)
 }
 
 app.use(ElementPlus)

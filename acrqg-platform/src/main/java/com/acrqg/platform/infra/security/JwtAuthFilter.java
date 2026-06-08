@@ -60,6 +60,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final List<RequestMatcher> WHITELIST = List.of(
             new AntPathRequestMatcher("/api/v1/auth/login"),
             new AntPathRequestMatcher("/api/v1/auth/refresh"),
+            new AntPathRequestMatcher("/api/v1/auth/csrf"),
             new AntPathRequestMatcher("/api/v1/webhooks/**"),
             new AntPathRequestMatcher("/health"),
             new AntPathRequestMatcher("/metrics"),

@@ -1,6 +1,7 @@
 package com.acrqg.platform.repository.client;
 
 import com.acrqg.platform.common.util.JsonUtils;
+import com.acrqg.platform.infra.net.OutboundUrlGuard;
 import com.acrqg.platform.diff.domain.ChangeType;
 import com.acrqg.platform.repository.domain.Provider;
 import com.acrqg.platform.repository.dto.CommitStatusRequest;
@@ -12,6 +13,7 @@ import com.acrqg.platform.repository.dto.DiffPayload;
 import com.acrqg.platform.repository.dto.RepositoryTestRequest;
 import com.acrqg.platform.writeback.exception.WritebackException;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -205,7 +207,12 @@ public class GithubClient extends AbstractProviderClient {
             return null;
         }
         Matcher m = LINK_NEXT_PATTERN.matcher(linkHeader);
-        return m.find() ? m.group(1) : null;
+        if (!m.find()) {
+            return null;
+        }
+        URI next = OutboundUrlGuard.requireSameHttpsHost(
+                URI.create(m.group(1)), "api.github.com", "GitHub pagination link");
+        return next.toString();
     }
 
     // ---------------------------------------------------------------------

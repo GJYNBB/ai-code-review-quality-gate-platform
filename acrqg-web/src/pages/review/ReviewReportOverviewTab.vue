@@ -90,7 +90,7 @@ const pieOption = computed(() => ({
 </script>
 
 <template>
-  <div class="overview-tab" v-loading="loading">
+  <div v-loading="loading" class="overview-tab">
     <el-empty v-if="!report" description="暂无报告" />
 
     <template v-else>

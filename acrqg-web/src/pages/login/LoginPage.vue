@@ -52,7 +52,6 @@ async function handleSubmit() {
     })
     authStore.setSession({
       accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
       expiresIn: result.expiresIn,
       user: result.user,
     })

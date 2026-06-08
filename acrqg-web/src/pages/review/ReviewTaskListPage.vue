@@ -219,7 +219,7 @@ watch(currentProjectId, (id) => {
       </div>
     </el-card>
 
-    <el-card shadow="never" class="review-task-list-page__table" v-loading="loading">
+    <el-card v-loading="loading" shadow="never" class="review-task-list-page__table">
       <el-table :data="items" stripe @row-click="viewDetail">
         <el-table-column prop="taskNo" label="任务编号" width="200">
           <template #default="{ row }">

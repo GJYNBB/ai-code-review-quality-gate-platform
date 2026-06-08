@@ -182,6 +182,12 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!-- ===== Hardened outbound HTTP ===== -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+
         <!-- ===== Observability ===== -->
         <dependency>
             <groupId>net.logstash.logback</groupId>

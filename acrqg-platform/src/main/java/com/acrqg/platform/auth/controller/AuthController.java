@@ -6,12 +6,15 @@ import com.acrqg.platform.auth.dto.RefreshRequest;
 import com.acrqg.platform.auth.dto.RefreshResultDTO;
 import com.acrqg.platform.auth.dto.UserDTO;
 import com.acrqg.platform.auth.service.AuthService;
+import com.acrqg.platform.auth.support.RefreshTokenCookieSupport;
 import com.acrqg.platform.common.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,38 +48,69 @@ public class AuthController {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final AuthService authService;
+    private final RefreshTokenCookieSupport refreshCookieSupport;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, RefreshTokenCookieSupport refreshCookieSupport) {
         this.authService = authService;
+        this.refreshCookieSupport = refreshCookieSupport;
     }
 
     @Operation(summary = "用户登录",
             description = "用户名 + 密码登录，签发 access + refresh token（R1.1 / R1.4）。"
                     + "失败映射：账号禁用 -> AUTH_ACCOUNT_DISABLED；用户名/密码错 -> AUTH_INVALID_CREDENTIALS。")
     @PostMapping("/login")
-    public ApiResponse<LoginResultDTO> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<LoginResultDTO>> login(@Valid @RequestBody LoginRequest request) {
         LoginResultDTO result = authService.login(request);
-        return ApiResponse.success(result);
+        HttpHeaders headers = new HttpHeaders();
+        refreshCookieSupport.addSetCookieHeader(headers, result.refreshToken());
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(ApiResponse.success(result));
     }
 
     @Operation(summary = "登出当前会话",
             description = "把当前 access token 的 jti 加入 Redis 黑名单，并撤销服务端绑定的 refresh token。"
                     + "请求体 refreshToken 作为旧客户端兼容兜底；需携带有效 access token。")
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(HttpServletRequest request,
-                                    @RequestBody(required = false) RefreshRequest logoutRequest) {
-        String refreshToken = logoutRequest == null ? null : logoutRequest.refreshToken();
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request,
+                                                    @RequestBody(required = false) RefreshRequest logoutRequest) {
+        String refreshToken = refreshCookieSupport.extract(request);
+        if ((refreshToken == null || refreshToken.isBlank()) && logoutRequest != null) {
+            refreshToken = logoutRequest.refreshToken();
+        }
         authService.logout(extractAccessToken(request), refreshToken);
-        return ApiResponse.success(null);
+        HttpHeaders headers = new HttpHeaders();
+        refreshCookieSupport.addClearCookieHeader(headers);
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(ApiResponse.success(null));
     }
 
     @Operation(summary = "刷新访问令牌",
             description = "用 refreshToken 换取新 accessToken，并旋转 refreshToken（R1.5）。"
                     + "refreshToken 无效 / 已撤销 -> AUTH_INVALID_TOKEN。")
     @PostMapping("/refresh")
-    public ApiResponse<RefreshResultDTO> refresh(@Valid @RequestBody RefreshRequest request) {
-        RefreshResultDTO result = authService.refresh(request.refreshToken());
-        return ApiResponse.success(result);
+    public ResponseEntity<ApiResponse<RefreshResultDTO>> refresh(HttpServletRequest servletRequest,
+                                                                 @RequestBody(required = false) RefreshRequest request) {
+        String refreshToken = refreshCookieSupport.extract(servletRequest);
+        if ((refreshToken == null || refreshToken.isBlank()) && request != null) {
+            refreshToken = request.refreshToken();
+        }
+        RefreshResultDTO result = authService.refresh(refreshToken);
+        HttpHeaders headers = new HttpHeaders();
+        refreshCookieSupport.addSetCookieHeader(headers, result.refreshToken());
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(ApiResponse.success(result));
+    }
+
+    @Operation(summary = "获取 CSRF Token",
+            description = "为浏览器客户端写入 XSRF-TOKEN Cookie；后续 mutating 请求通过 X-XSRF-TOKEN 头回传。")
+    @GetMapping("/csrf")
+    public ApiResponse<Void> csrf(CsrfToken csrfToken) {
+        // 访问 token 值会触发 CookieCsrfTokenRepository 生成并写入 XSRF-TOKEN cookie。
+        csrfToken.getToken();
+        return ApiResponse.success(null);
     }
 
     @Operation(summary = "获取当前用户",

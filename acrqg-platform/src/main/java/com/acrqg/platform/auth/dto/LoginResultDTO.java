@@ -1,5 +1,6 @@
 package com.acrqg.platform.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -36,7 +37,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "登录结果（R1.1 / R1.4）")
 public record LoginResultDTO(
         @Schema(description = "访问令牌 (HS256 JWT)") String accessToken,
-        @Schema(description = "刷新令牌 (HS256 JWT)") String refreshToken,
+        @JsonIgnore
+        @Schema(description = "刷新令牌通过 HttpOnly Cookie 返回，不序列化到 JSON 响应体") String refreshToken,
         @Schema(description = "accessToken 有效期（秒）") long expiresIn,
         @Schema(description = "当前用户") UserDTO user
 ) {

@@ -27,26 +27,26 @@ export type UserStatus = 'ENABLED' | 'DISABLED'
 
 /** 评审任务状态字典（design §7.4） */
 export type ReviewTaskStatus =
-    | 'PENDING'
-    | 'FETCHING_DIFF'
-    | 'STATIC_SCANNING'
-    | 'AI_REVIEWING'
-    | 'GATE_EVALUATING'
-    | 'PASSED'
-    | 'FAILED_GATE'
-    | 'EXECUTION_FAILED'
+  | 'PENDING'
+  | 'FETCHING_DIFF'
+  | 'STATIC_SCANNING'
+  | 'AI_REVIEWING'
+  | 'GATE_EVALUATING'
+  | 'PASSED'
+  | 'FAILED_GATE'
+  | 'EXECUTION_FAILED'
 
 /** 任务触发来源 */
 export type TriggerType = 'WEBHOOK' | 'MANUAL' | 'CI_CD'
 
 /** 问题状态字典 */
 export type CodeIssueStatus =
-    | 'NEW'
-    | 'CONFIRMED'
-    | 'FALSE_POSITIVE'
-    | 'PENDING_VERIFY'
-    | 'CLOSED'
-    | 'REOPENED'
+  | 'NEW'
+  | 'CONFIRMED'
+  | 'FALSE_POSITIVE'
+  | 'PENDING_VERIFY'
+  | 'CLOSED'
+  | 'REOPENED'
 
 /** 严重等级 */
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'
@@ -71,12 +71,12 @@ export type GateStatus = 'PASSED' | 'FAILED' | 'WAIVED' | 'PENDING'
 
 /** 门禁可用 metric（design §13.5 / R13.6） */
 export type GateMetric =
-    | 'critical_issue_count'
-    | 'security_issue_count'
-    | 'test_coverage'
-    | 'duplicate_rate'
-    | 'ai_risk_score'
-    | 'new_issue_count'
+  | 'critical_issue_count'
+  | 'security_issue_count'
+  | 'test_coverage'
+  | 'duplicate_rate'
+  | 'ai_risk_score'
+  | 'new_issue_count'
 
 /** 豁免审批状态 */
 export type GateWaiverStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -85,553 +85,551 @@ export type GateWaiverStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 /** 后端统一响应包装（design §8.1） */
 export interface ApiResponse<T> {
-    /** 0 表示成功；失败时为字符串错误码 */
-    code: number | string
-    message: string
-    data: T | null
-    details?: FieldError[] | null
-    requestId?: string
+  /** 0 表示成功；失败时为字符串错误码 */
+  code: number | string
+  message: string
+  data: T | null
+  details?: FieldError[] | null
+  requestId?: string
 }
 
 export interface FieldError {
-    field: string
-    reason: string
+  field: string
+  reason: string
 }
 
 /** 分页结果（design §8.1） */
 export interface PageResult<T> {
-    items: T[]
-    page: number
-    pageSize: number
-    total: number
-    totalPages: number
+  items: T[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
 }
 
 /** 通用分页参数（多数列表接口共用） */
 export interface PageQuery {
-    page?: number
-    pageSize?: number
+  page?: number
+  pageSize?: number
 }
 
 // =============== 认证 / 用户（R1, R3） =============== //
 
 export interface LoginRequest {
-    username: string
-    password: string
+  username: string
+  password: string
 }
 
 export interface LoginResultDTO {
-    accessToken: string
-    refreshToken: string
-    expiresIn: number
-    user: UserDTO
+  accessToken: string
+  expiresIn: number
+  user: UserDTO
 }
 
 export interface RefreshResultDTO {
-    accessToken: string
-    refreshToken: string
-    expiresIn: number
+  accessToken: string
+  expiresIn: number
 }
 
 export interface UserDTO {
-    id: number
-    username: string
-    email: string
-    status: UserStatus
-    roles: Role[]
-    createdAt: string
+  id: number
+  username: string
+  email: string
+  status: UserStatus
+  roles: Role[]
+  createdAt: string
 }
 
 export interface UserQuery extends PageQuery {
-    keyword?: string
-    status?: UserStatus
-    role?: Role
+  keyword?: string
+  status?: UserStatus
+  role?: Role
 }
 
 export interface UserCreateRequest {
-    username: string
-    email: string
-    password: string
-    roles: Role[]
+  username: string
+  email: string
+  password: string
+  roles: Role[]
 }
 
 export interface UserStatusChangeRequest {
-    status: UserStatus
+  status: UserStatus
 }
 
 // =============== 项目 / 成员（R4, R6） =============== //
 
 export interface ProjectDTO {
-    id: number
-    name: string
-    description?: string | null
-    defaultBranch: string
-    language: ProjectLanguage | string
-    createdBy: number
-    memberCount: number
-    createdAt: string
+  id: number
+  name: string
+  description?: string | null
+  defaultBranch: string
+  language: ProjectLanguage | string
+  createdBy: number
+  memberCount: number
+  createdAt: string
 }
 
 export interface ProjectQuery extends PageQuery {
-    keyword?: string
+  keyword?: string
 }
 
 export interface ProjectCreateRequest {
-    name: string
-    description?: string
-    defaultBranch: string
-    language: ProjectLanguage
+  name: string
+  description?: string
+  defaultBranch: string
+  language: ProjectLanguage
 }
 
 export interface ProjectUpdateRequest {
-    description?: string
-    defaultBranch?: string
-    language?: ProjectLanguage
+  description?: string
+  defaultBranch?: string
+  language?: ProjectLanguage
 }
 
 export interface ProjectMemberDTO {
-    userId: number
-    username: string
-    role: ProjectRole
-    joinedAt: string
+  userId: number
+  username: string
+  role: ProjectRole
+  joinedAt: string
 }
 
 export interface AddMemberRequest {
-    userId: number
-    role: ProjectRole
+  userId: number
+  role: ProjectRole
 }
 
 // =============== 仓库绑定（R5） =============== //
 
 export interface RepositoryTestRequest {
-    provider: Provider
-    repoUrl: string
-    accessToken: string
+  provider: Provider
+  repoUrl: string
+  accessToken: string
 }
 
 export interface RepositoryBindRequest {
-    provider: Provider
-    repoUrl: string
-    accessToken: string
-    webhookSecret: string
+  provider: Provider
+  repoUrl: string
+  accessToken: string
+  webhookSecret: string
 }
 
 export interface RepositoryBindingDTO {
-    id: number
-    projectId: number
-    provider: Provider | string
-    repoUrl: string
-    webhookUrl: string
-    status: 'ACTIVE' | 'INACTIVE' | string
-    lastCheckedAt?: string | null
+  id: number
+  projectId: number
+  provider: Provider | string
+  repoUrl: string
+  webhookUrl: string
+  status: 'ACTIVE' | 'INACTIVE' | string
+  lastCheckedAt?: string | null
 }
 
 export interface ConnectivityResultDTO {
-    reachable: boolean
-    message: string
+  reachable: boolean
+  message: string
 }
 
 // =============== 评审任务（R7, R8, R9） =============== //
 
 export interface ReviewTaskDTO {
-    id: number
-    taskNo: string
-    projectId: number
-    prId?: string | null
-    sourceBranch: string
-    targetBranch: string
-    commitSha: string
-    status: ReviewTaskStatus | string
-    triggerType: TriggerType | string
-    score?: number | null
-    aiRiskScore?: number | null
-    aiAvailable: boolean
-    attempt: number
-    createdBy?: number | null
-    startedAt?: string | null
-    finishedAt?: string | null
-    createdAt: string
-    updatedAt: string
+  id: number
+  taskNo: string
+  projectId: number
+  prId?: string | null
+  sourceBranch: string
+  targetBranch: string
+  commitSha: string
+  status: ReviewTaskStatus | string
+  triggerType: TriggerType | string
+  score?: number | null
+  aiRiskScore?: number | null
+  aiAvailable: boolean
+  attempt: number
+  createdBy?: number | null
+  startedAt?: string | null
+  finishedAt?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ReviewTaskQuery extends PageQuery {
-    projectId?: number
-    status?: ReviewTaskStatus
-    triggerType?: TriggerType
+  projectId?: number
+  status?: ReviewTaskStatus
+  triggerType?: TriggerType
 }
 
 export interface ReviewTaskCreateRequest {
-    projectId: number
-    sourceBranch: string
-    targetBranch: string
-    commitSha?: string
-    prId?: string
-    triggerType: TriggerType
+  projectId: number
+  sourceBranch: string
+  targetBranch: string
+  commitSha?: string
+  prId?: string
+  triggerType: TriggerType
 }
 
 export interface RetryRequest {
-    reason?: string
+  reason?: string
 }
 
 export interface CancelRequest {
-    reason: string
+  reason: string
 }
 
 export interface TaskLogDTO {
-    id: number
-    taskId: number
-    stage: string
-    level: 'INFO' | 'WARN' | 'ERROR'
-    message: string
-    detail?: Record<string, unknown> | null
-    createdAt: string
+  id: number
+  taskId: number
+  stage: string
+  level: 'INFO' | 'WARN' | 'ERROR'
+  message: string
+  detail?: Record<string, unknown> | null
+  createdAt: string
 }
 
 export interface TaskLogQuery extends PageQuery {
-    stage?: string
-    level?: 'INFO' | 'WARN' | 'ERROR'
+  stage?: string
+  level?: 'INFO' | 'WARN' | 'ERROR'
 }
 
 // =============== 问题（R16, R17） =============== //
 
 export interface IssueHistoryDTO {
-    id: number
-    codeIssueId: number
-    fromStatus: CodeIssueStatus | string
-    toStatus: CodeIssueStatus | string
-    comment?: string | null
-    operatorId?: number | null
-    operatorName?: string | null
-    changedAt: string
+  id: number
+  codeIssueId: number
+  fromStatus: CodeIssueStatus | string
+  toStatus: CodeIssueStatus | string
+  comment?: string | null
+  operatorId?: number | null
+  operatorName?: string | null
+  changedAt: string
 }
 
 export interface IssueCommentDTO {
-    id: number
-    codeIssueId: number
-    content: string
-    operatorId: number
-    operatorName: string
-    createdAt: string
+  id: number
+  codeIssueId: number
+  content: string
+  operatorId: number
+  operatorName: string
+  createdAt: string
 }
 
 export interface CodeIssueDTO {
-    id: number
-    taskId: number
-    filePath: string
-    lineNo?: number | null
-    ruleCode: string
-    source: IssueSource | string
-    severity: Severity
-    status: CodeIssueStatus
-    description: string
-    suggestion?: string | null
-    confidence?: number | string | null
-    createdAt: string
-    updatedAt: string
-    /** 列表接口为 null；详情接口非 null */
-    history?: IssueHistoryDTO[] | null
-    /** 列表接口为 null；详情接口非 null */
-    comments?: IssueCommentDTO[] | null
+  id: number
+  taskId: number
+  filePath: string
+  lineNo?: number | null
+  ruleCode: string
+  source: IssueSource | string
+  severity: Severity
+  status: CodeIssueStatus
+  description: string
+  suggestion?: string | null
+  confidence?: number | string | null
+  createdAt: string
+  updatedAt: string
+  /** 列表接口为 null；详情接口非 null */
+  history?: IssueHistoryDTO[] | null
+  /** 列表接口为 null；详情接口非 null */
+  comments?: IssueCommentDTO[] | null
 }
 
 export interface IssueQuery extends PageQuery {
-    severity?: Severity[]
-    status?: CodeIssueStatus[]
-    source?: IssueSource
-    filePath?: string
-    keyword?: string
+  severity?: Severity[]
+  status?: CodeIssueStatus[]
+  source?: IssueSource
+  filePath?: string
+  keyword?: string
 }
 
 export interface IssueStatusChangeRequest {
-    status: CodeIssueStatus
-    comment?: string
+  status: CodeIssueStatus
+  comment?: string
 }
 
 export interface IssueCommentCreateRequest {
-    content: string
+  content: string
 }
 
 // =============== 报告（R16） =============== //
 
 export interface TaskOverviewDTO {
-    taskId: number
-    taskNo: string
-    projectId: number
-    projectName?: string | null
-    prId?: string | null
-    commitSha: string
-    sourceBranch: string
-    targetBranch: string
-    status: ReviewTaskStatus | string
-    score?: number | null
-    durationSeconds?: number | null
-    createdAt: string
-    finishedAt?: string | null
+  taskId: number
+  taskNo: string
+  projectId: number
+  projectName?: string | null
+  prId?: string | null
+  commitSha: string
+  sourceBranch: string
+  targetBranch: string
+  status: ReviewTaskStatus | string
+  score?: number | null
+  durationSeconds?: number | null
+  createdAt: string
+  finishedAt?: string | null
 }
 
 export interface IssueCountAggDTO {
-    severity: Severity
-    source: IssueSource | string
-    count: number
+  severity: Severity
+  source: IssueSource | string
+  count: number
 }
 
 export interface RuleEvalDTO {
-    metric: string
-    operator: string
-    threshold: string
-    severity: GateRuleSeverity | string
-    actual?: number | string | null
-    passed: boolean
+  metric: string
+  operator: string
+  threshold: string
+  severity: GateRuleSeverity | string
+  actual?: number | string | null
+  passed: boolean
 }
 
 export interface GateResultSummaryDTO {
-    status: GateStatus | string
-    score?: number | null
-    aiRiskScore?: number | null
-    aiAvailable: boolean
-    failedRules: RuleEvalDTO[]
-    passedRules: RuleEvalDTO[]
+  status: GateStatus | string
+  score?: number | null
+  aiRiskScore?: number | null
+  aiAvailable: boolean
+  failedRules: RuleEvalDTO[]
+  passedRules: RuleEvalDTO[]
 }
 
 export interface ReviewReportDTO {
-    taskOverview: TaskOverviewDTO
-    gateResultSummary?: GateResultSummaryDTO | null
-    issueCounts: IssueCountAggDTO[]
-    aiAvailability: boolean
+  taskOverview: TaskOverviewDTO
+  gateResultSummary?: GateResultSummaryDTO | null
+  issueCounts: IssueCountAggDTO[]
+  aiAvailability: boolean
 }
 
 export interface DiffHunkDTO {
-    oldStart: number
-    oldLines: number
-    newStart: number
-    newLines: number
-    header?: string | null
-    /** 行内容（含 +/- 前缀），具体格式由后端 DiffViewDTO 决定；前端做兜底渲染 */
-    lines?: string[]
+  oldStart: number
+  oldLines: number
+  newStart: number
+  newLines: number
+  header?: string | null
+  /** 行内容（含 +/- 前缀），具体格式由后端 DiffViewDTO 决定；前端做兜底渲染 */
+  lines?: string[]
 }
 
 export interface DiffFileDTO {
-    filePath: string
-    changeType?: string | null
-    addedLines?: number
-    deletedLines?: number
-    hunks: DiffHunkDTO[]
+  filePath: string
+  changeType?: string | null
+  addedLines?: number
+  deletedLines?: number
+  hunks: DiffHunkDTO[]
 }
 
 export interface DiffViewDTO {
-    taskId: number
-    changedFileCount: number
-    files: DiffFileDTO[]
+  taskId: number
+  changedFileCount: number
+  files: DiffFileDTO[]
 }
 
 // =============== 门禁（R13, R14, R15） =============== //
 
 export interface GateRuleDTO {
-    id?: number | null
-    metric: GateMetric | string
-    operator: GateOperator | string
-    threshold: string
-    severity: GateRuleSeverity
-    enabled?: boolean | null
+  id?: number | null
+  metric: GateMetric | string
+  operator: GateOperator | string
+  threshold: string
+  severity: GateRuleSeverity
+  enabled?: boolean | null
 }
 
 export interface QualityGateDTO {
-    id?: number | null
-    projectId?: number | null
-    name: string
-    version?: number | null
-    enabled: boolean
-    createdBy?: number | null
-    createdAt?: string | null
-    rules: GateRuleDTO[]
+  id?: number | null
+  projectId?: number | null
+  name: string
+  version?: number | null
+  enabled: boolean
+  createdBy?: number | null
+  createdAt?: string | null
+  rules: GateRuleDTO[]
 }
 
 export interface QualityGateSaveRequest {
-    name: string
-    rules: GateRuleDTO[]
+  name: string
+  rules: GateRuleDTO[]
 }
 
 export interface GateResultSummary {
-    failedRules: RuleEvalDTO[]
-    passedRules: RuleEvalDTO[]
-    metricValues?: Record<string, number | string> | null
-    aiAvailable: boolean
+  failedRules: RuleEvalDTO[]
+  passedRules: RuleEvalDTO[]
+  metricValues?: Record<string, number | string> | null
+  aiAvailable: boolean
 }
 
 export interface GateResultDTO {
-    id: number
-    taskId: number
-    status: GateStatus | string
-    score?: number | null
-    aiRiskScore?: number | null
-    aiAvailable: boolean
-    summary: GateResultSummary
-    createdAt: string
-    updatedAt: string
+  id: number
+  taskId: number
+  status: GateStatus | string
+  score?: number | null
+  aiRiskScore?: number | null
+  aiAvailable: boolean
+  summary: GateResultSummary
+  createdAt: string
+  updatedAt: string
 }
 
 export interface GateWaiverDTO {
-    id: number
-    taskId: number
-    projectId: number
-    reason: string
-    status: GateWaiverStatus | string
-    applicantId: number
-    approverId?: number | null
-    approvedAt?: string | null
-    approvalComment?: string | null
-    createdAt: string
-    updatedAt: string
+  id: number
+  taskId: number
+  projectId: number
+  reason: string
+  status: GateWaiverStatus | string
+  applicantId: number
+  approverId?: number | null
+  approvedAt?: string | null
+  approvalComment?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface GateWaiverSubmitRequest {
-    reason: string
+  reason: string
 }
 
 export interface GateWaiverApproveRequest {
-    approve: boolean
-    comment?: string
+  approve: boolean
+  comment?: string
 }
 
 // =============== 看板（R18） =============== //
 
 export interface DashboardQuery {
-    startDate: string
-    endDate: string
-    branch?: string
+  startDate: string
+  endDate: string
+  branch?: string
 }
 
 export interface TrendPointDTO {
-    date: string
-    taskCount: number
-    passCount: number
-    failCount: number
-    passRate?: number | string | null
-    avgScore?: number | string | null
-    avgDurationSeconds?: number | string | null
+  date: string
+  taskCount: number
+  passCount: number
+  failCount: number
+  passRate?: number | string | null
+  avgScore?: number | string | null
+  avgDurationSeconds?: number | string | null
 }
 
 export interface QualityTrendTotals {
-    totalTasks: number
-    overallPassRate?: number | string | null
-    overallAvgScore?: number | string | null
+  totalTasks: number
+  overallPassRate?: number | string | null
+  overallAvgScore?: number | string | null
 }
 
 export interface QualityTrendDTO {
-    projectId: number
-    startDate: string
-    endDate: string
-    points: TrendPointDTO[]
-    totals: QualityTrendTotals
+  projectId: number
+  startDate: string
+  endDate: string
+  points: TrendPointDTO[]
+  totals: QualityTrendTotals
 }
 
 export interface RiskFileDTO {
-    filePath: string
-    issueCount: number
-    weightedScore: number | string
-    criticalCount: number
-    highCount: number
+  filePath: string
+  issueCount: number
+  weightedScore: number | string
+  criticalCount: number
+  highCount: number
 }
 
 // =============== 通知（R19） =============== //
 
 export interface NotificationDTO {
-    id: number
-    userId: number
-    type: string
-    title: string
-    body: string
-    link?: string | null
-    read: boolean
-    relatedType?: string | null
-    relatedId?: number | null
-    createdAt: string
-    readAt?: string | null
+  id: number
+  userId: number
+  type: string
+  title: string
+  body: string
+  link?: string | null
+  read: boolean
+  relatedType?: string | null
+  relatedId?: number | null
+  createdAt: string
+  readAt?: string | null
 }
 
 export interface NotificationQuery extends PageQuery {
-    type?: string
-    read?: boolean
+  type?: string
+  read?: boolean
 }
 
 export interface UnreadCountDTO {
-    count: number
+  count: number
 }
 
 // =============== 系统管理（R21, R22） =============== //
 
 export interface ModelConfigDTO {
-    id: number
-    name: string
-    baseUrl: string
-    apiKeyMasked: string
-    timeoutSeconds: number
-    enabled: boolean
-    createdAt: string
-    updatedAt: string
+  id: number
+  name: string
+  baseUrl: string
+  apiKeyMasked: string
+  timeoutSeconds: number
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ModelConfigCreateRequest {
-    name: string
-    baseUrl: string
-    apiKey: string
-    timeoutSeconds: number
+  name: string
+  baseUrl: string
+  apiKey: string
+  timeoutSeconds: number
 }
 
 export interface ModelConfigUpdateRequest {
-    baseUrl?: string
-    apiKey?: string
-    timeoutSeconds?: number
-    enabled?: boolean
+  baseUrl?: string
+  apiKey?: string
+  timeoutSeconds?: number
+  enabled?: boolean
 }
 
 export interface ScannerConfigDTO {
-    id: number
-    name: string
-    language: string
-    enabled: boolean
-    command: string
-    resultParserType: string
-    createdAt: string
-    updatedAt: string
+  id: number
+  name: string
+  language: string
+  enabled: boolean
+  command: string
+  resultParserType: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ScannerConfigRequest {
-    name: string
-    language: string
-    enabled?: boolean
-    command: string
-    resultParserType: string
+  name: string
+  language: string
+  enabled?: boolean
+  command: string
+  resultParserType: string
 }
 
 export interface SystemParamDTO {
-    paramKey: string
-    paramValue: string
-    description?: string | null
-    sensitive: boolean
-    updatedBy?: number | null
-    updatedAt: string
+  paramKey: string
+  paramValue: string
+  description?: string | null
+  sensitive: boolean
+  updatedBy?: number | null
+  updatedAt: string
 }
 
 export interface SystemParamUpdateRequest {
-    value: string
+  value: string
 }
 
 export interface AuditLogDTO {
-    id: number
-    operatorId?: number | null
-    operatorUsername?: string | null
-    action: string
-    resourceType: string
-    resourceId: string
-    ip: string
-    detail?: Record<string, unknown> | null
-    createdAt: string
+  id: number
+  operatorId?: number | null
+  operatorUsername?: string | null
+  action: string
+  resourceType: string
+  resourceId: string
+  ip: string
+  detail?: Record<string, unknown> | null
+  createdAt: string
 }
 
 export interface AuditQuery extends PageQuery {
-    operator?: string
-    action?: string
-    startDate?: string
-    endDate?: string
+  operator?: string
+  action?: string
+  startDate?: string
+  endDate?: string
 }

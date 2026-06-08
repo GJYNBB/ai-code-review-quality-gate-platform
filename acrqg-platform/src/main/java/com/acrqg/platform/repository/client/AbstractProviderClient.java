@@ -1,5 +1,6 @@
 package com.acrqg.platform.repository.client;
 
+import com.acrqg.platform.infra.net.GuardedRestClientFactory;
 import com.acrqg.platform.repository.dto.ConnectivityResultDTO;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -7,8 +8,6 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -49,19 +48,11 @@ abstract class AbstractProviderClient implements ProviderClient {
         this.restClient = buildRestClient();
     }
 
-    /** 构造带 10s 超时的 RestClient。 */
+    /** 构造带 10s 超时、禁用重定向并在连接路径执行 DNS 防护的 RestClient。 */
     private static RestClient buildRestClient() {
-        ClientHttpRequestFactory rf = factoryWithTimeouts();
-        return RestClient.builder()
-                .requestFactory(rf)
-                .build();
-    }
-
-    private static ClientHttpRequestFactory factoryWithTimeouts() {
-        SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
-        rf.setConnectTimeout(Duration.ofMillis(TIMEOUT_MILLIS));
-        rf.setReadTimeout(Duration.ofMillis(TIMEOUT_MILLIS));
-        return rf;
+        return GuardedRestClientFactory.build(
+                Duration.ofMillis(TIMEOUT_MILLIS),
+                Duration.ofMillis(TIMEOUT_MILLIS));
     }
 
     /**

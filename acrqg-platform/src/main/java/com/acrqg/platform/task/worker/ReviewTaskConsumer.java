@@ -86,6 +86,7 @@ public class ReviewTaskConsumer {
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectProvider<RedisMessageListenerContainer> messageListenerContainerProvider;
     private final TaskOrchestrator taskOrchestrator;
+    private final ReviewTaskMessageProcessor messageProcessor;
     private final ObjectProvider<AdminService> adminServiceProvider;
 
     /** 工作线程池；并发热更新时调整 core/max。 */
@@ -101,10 +102,12 @@ public class ReviewTaskConsumer {
     public ReviewTaskConsumer(StringRedisTemplate stringRedisTemplate,
                               ObjectProvider<RedisMessageListenerContainer> messageListenerContainerProvider,
                               TaskOrchestrator taskOrchestrator,
+                              ReviewTaskMessageProcessor messageProcessor,
                               ObjectProvider<AdminService> adminServiceProvider) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.messageListenerContainerProvider = messageListenerContainerProvider;
         this.taskOrchestrator = taskOrchestrator;
+        this.messageProcessor = messageProcessor;
         this.adminServiceProvider = adminServiceProvider;
     }
 
@@ -206,7 +209,7 @@ public class ReviewTaskConsumer {
 
     private void submitToWorker(MapRecord<String, Object, Object> record) {
         try {
-            workerExecutor.submit(() -> processRecord(record));
+            workerExecutor.submit(() -> messageProcessor.process(record));
         } catch (RuntimeException ex) {
             // 提交失败（极少见，工作池已关闭）：不 ACK，等待 PEL 转移
             log.warn("submitToWorker rejected: recordId={} err={}",

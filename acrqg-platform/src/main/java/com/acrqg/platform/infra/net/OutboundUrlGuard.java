@@ -22,7 +22,11 @@ public final class OutboundUrlGuard {
     }
 
     public static URI requireHttpsPublicUrl(String rawUrl, String purpose) {
-        URI uri = parse(rawUrl, purpose);
+        return requireHttpsPublicUri(parse(rawUrl, purpose), purpose);
+    }
+
+    public static URI requireHttpsPublicUri(URI uri, String purpose) {
+        requireUsableUri(uri, purpose);
         if (!"https".equalsIgnoreCase(uri.getScheme())) {
             throw new IllegalArgumentException(purpose + " must use https");
         }
@@ -30,14 +34,18 @@ public final class OutboundUrlGuard {
         return uri;
     }
 
+    public static URI requireSameHttpsHost(URI uri, String expectedHost, String purpose) {
+        URI checked = requireHttpsPublicUri(uri, purpose);
+        String actual = normalizeHost(checked.getHost(), purpose);
+        String expected = normalizeHost(expectedHost, purpose + " expected host");
+        if (!actual.equals(expected)) {
+            throw new IllegalArgumentException(purpose + " must stay on host " + expected);
+        }
+        return checked;
+    }
+
     public static String requirePublicHost(String host, String purpose) {
-        if (host == null || host.isBlank()) {
-            throw new IllegalArgumentException(purpose + " host is required");
-        }
-        String asciiHost = IDN.toASCII(host.trim()).toLowerCase(Locale.ROOT);
-        if (asciiHost.equals("localhost") || asciiHost.endsWith(".localhost")) {
-            throw new IllegalArgumentException(purpose + " must not target localhost");
-        }
+        String asciiHost = normalizeHost(host, purpose);
         InetAddress[] resolved;
         try {
             resolved = InetAddress.getAllByName(asciiHost);
@@ -48,12 +56,16 @@ public final class OutboundUrlGuard {
             throw new IllegalArgumentException(purpose + " host has no addresses: " + asciiHost);
         }
         for (InetAddress address : resolved) {
-            if (!isPublicRoutable(address)) {
-                throw new IllegalArgumentException(purpose + " resolves to a disallowed address: "
-                        + address.getHostAddress());
-            }
+            requirePublicAddress(address, purpose);
         }
         return asciiHost;
+    }
+
+    public static void requirePublicAddress(InetAddress address, String purpose) {
+        if (!isPublicRoutable(address)) {
+            throw new IllegalArgumentException(purpose + " resolves to a disallowed address: "
+                    + address.getHostAddress());
+        }
     }
 
     private static URI parse(String rawUrl, String purpose) {
@@ -62,19 +74,37 @@ public final class OutboundUrlGuard {
         }
         try {
             URI uri = new URI(rawUrl.trim());
-            if (uri.getHost() == null || uri.getHost().isBlank()) {
-                throw new IllegalArgumentException(purpose + " URL host is required");
-            }
-            if (uri.getUserInfo() != null) {
-                throw new IllegalArgumentException(purpose + " URL must not contain userinfo");
-            }
+            requireUsableUri(uri, purpose);
             return uri;
         } catch (URISyntaxException ex) {
             throw new IllegalArgumentException(purpose + " URL is invalid", ex);
         }
     }
 
-    private static boolean isPublicRoutable(InetAddress address) {
+    private static void requireUsableUri(URI uri, String purpose) {
+        if (uri == null) {
+            throw new IllegalArgumentException(purpose + " URL is required");
+        }
+        if (uri.getHost() == null || uri.getHost().isBlank()) {
+            throw new IllegalArgumentException(purpose + " URL host is required");
+        }
+        if (uri.getUserInfo() != null) {
+            throw new IllegalArgumentException(purpose + " URL must not contain userinfo");
+        }
+    }
+
+    private static String normalizeHost(String host, String purpose) {
+        if (host == null || host.isBlank()) {
+            throw new IllegalArgumentException(purpose + " host is required");
+        }
+        String asciiHost = IDN.toASCII(host.trim()).toLowerCase(Locale.ROOT);
+        if (asciiHost.equals("localhost") || asciiHost.endsWith(".localhost")) {
+            throw new IllegalArgumentException(purpose + " must not target localhost");
+        }
+        return asciiHost;
+    }
+
+    public static boolean isPublicRoutable(InetAddress address) {
         if (address.isAnyLocalAddress()
                 || address.isLoopbackAddress()
                 || address.isLinkLocalAddress()

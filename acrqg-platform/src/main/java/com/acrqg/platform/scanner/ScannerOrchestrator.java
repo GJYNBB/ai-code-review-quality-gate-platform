@@ -8,12 +8,19 @@ import com.acrqg.platform.diff.domain.DiffFile;
 import com.acrqg.platform.diff.repository.DiffFileMapper;
 import com.acrqg.platform.project.domain.Project;
 import com.acrqg.platform.project.repository.ProjectMapper;
+import com.acrqg.platform.repository.domain.RepositoryBinding;
+import com.acrqg.platform.repository.repository.RepositoryBindingMapper;
+import com.acrqg.platform.repository.service.RepositoryService;
 import com.acrqg.platform.scanner.adapter.ScanContext;
 import com.acrqg.platform.scanner.adapter.SemgrepScanner;
 import com.acrqg.platform.scanner.adapter.StaticScannerAdapter;
+import com.acrqg.platform.scanner.source.MaterializedSource;
+import com.acrqg.platform.scanner.source.SourceMaterializationRequest;
+import com.acrqg.platform.scanner.source.SourceMaterializationService;
 import com.acrqg.platform.task.domain.ReviewTask;
 import com.acrqg.platform.task.log.TaskLogger;
 import com.acrqg.platform.task.repository.ReviewTaskMapper;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -64,6 +71,9 @@ public class ScannerOrchestrator {
     private final ProjectMapper projectMapper;
     private final DiffFileMapper diffFileMapper;
     private final CodeIssueMapper codeIssueMapper;
+    private final RepositoryBindingMapper repositoryBindingMapper;
+    private final RepositoryService repositoryService;
+    private final SourceMaterializationService sourceMaterializationService;
     private final TaskLogger taskLogger;
     private final List<StaticScannerAdapter> adapters;
 
@@ -71,12 +81,18 @@ public class ScannerOrchestrator {
                                ProjectMapper projectMapper,
                                DiffFileMapper diffFileMapper,
                                CodeIssueMapper codeIssueMapper,
+                               RepositoryBindingMapper repositoryBindingMapper,
+                               RepositoryService repositoryService,
+                               SourceMaterializationService sourceMaterializationService,
                                TaskLogger taskLogger,
                                List<StaticScannerAdapter> adapters) {
         this.reviewTaskMapper = reviewTaskMapper;
         this.projectMapper = projectMapper;
         this.diffFileMapper = diffFileMapper;
         this.codeIssueMapper = codeIssueMapper;
+        this.repositoryBindingMapper = repositoryBindingMapper;
+        this.repositoryService = repositoryService;
+        this.sourceMaterializationService = sourceMaterializationService;
         this.taskLogger = taskLogger;
         this.adapters = adapters == null ? List.of() : List.copyOf(adapters);
     }
@@ -109,26 +125,48 @@ public class ScannerOrchestrator {
                         .filter(f -> !Boolean.TRUE.equals(f.getOversized()))
                         .collect(Collectors.toUnmodifiableList());
 
+        List<DiffFile> safeApplicable = applicable.stream()
+                .filter(f -> isSafeChangedPath(f.getFilePath()))
+                .collect(Collectors.toUnmodifiableList());
+        if (safeApplicable.size() != applicable.size()) {
+            taskLogger.warn(taskId, STAGE,
+                    "some changed files were skipped because their paths are unsafe for scanner checkout");
+        }
+
         List<StaticScannerAdapter> selected = selectAdapters(language);
         if (selected.isEmpty()) {
             taskLogger.info(taskId, STAGE,
                     "no applicable scanner: language=" + language + " adapters=" + adapters.size());
             return 0;
         }
-        if (!sourceCheckoutAvailable()) {
+        if (task.getCommitSha() == null || task.getCommitSha().isBlank()) {
             taskLogger.warn(taskId, STAGE,
-                    "static scanners skipped: source checkout materialization is not configured");
-            log.warn("ScannerOrchestrator: skipped {} scanners for taskId={} because source checkout materialization is not configured",
-                    selected.size(), taskId);
+                    "static scanners skipped: exact commit SHA is required for safe source checkout");
             return 0;
         }
 
+        RepositoryBinding binding = repositoryBindingMapper.selectByProjectId(task.getProjectId());
+        if (binding == null || binding.getRepoUrl() == null || binding.getRepoUrl().isBlank()) {
+            taskLogger.warn(taskId, STAGE,
+                    "static scanners skipped: repository binding is missing");
+            return 0;
+        }
+
+        String accessToken = repositoryService.decryptAccessToken(task.getProjectId());
         AtomicInteger succeededScanners = new AtomicInteger(0);
         AtomicInteger failedScanners = new AtomicInteger(0);
-        List<CodeIssue> all = selected.parallelStream()
-                .flatMap(adapter -> safeScan(taskId, adapter, task, applicable,
-                        succeededScanners, failedScanners))
-                .collect(Collectors.toList());
+        List<CodeIssue> all;
+        try (MaterializedSource source = sourceMaterializationService.materialize(
+                new SourceMaterializationRequest(
+                        taskId,
+                        binding.getRepoUrl(),
+                        task.getCommitSha(),
+                        accessToken))) {
+            all = selected.parallelStream()
+                    .flatMap(adapter -> safeScan(taskId, adapter, task, safeApplicable, source.workdir(),
+                            succeededScanners, failedScanners))
+                    .collect(Collectors.toList());
+        }
 
         if (succeededScanners.get() == 0 && failedScanners.get() > 0) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR,
@@ -149,19 +187,8 @@ public class ScannerOrchestrator {
         taskLogger.info(taskId, STAGE,
                 "scan finished, issues=" + inserted
                         + " scanners=" + selected.size()
-                        + " files=" + applicable.size());
+                        + " files=" + safeApplicable.size());
         return inserted;
-    }
-
-    /**
-     * 当前版本尚未实现安全的源码 checkout / materialization 服务。
-     *
-     * <p>静态扫描器只能在真实仓库工作区中运行；不能从 diff hunks 合成临时文件，否则会产生
-     * 误报/漏报并放大路径处理风险。在 checkout 服务落地前，发现可用扫描器时显式跳过，避免
-     * 已启用的旧 scanner_config 行把任务推进到全失败状态。
-     */
-    private boolean sourceCheckoutAvailable() {
-        return false;
     }
 
     /** 选择"语言匹配 OR Semgrep（通用安全）"且可用的适配器集合。 */
@@ -187,6 +214,7 @@ public class ScannerOrchestrator {
                                        StaticScannerAdapter adapter,
                                        ReviewTask task,
                                        List<DiffFile> applicable,
+                                       Path workdir,
                                        AtomicInteger succeededScanners,
                                        AtomicInteger failedScanners) {
         try {
@@ -194,7 +222,7 @@ public class ScannerOrchestrator {
                     taskId,
                     task,
                     applicable,
-                    null, // workdir 由 AbstractStaticScanner 自行 mkdtemp
+                    workdir,
                     getCachedConfig(adapter));
             List<CodeIssue> issues = adapter.scan(ctx);
             succeededScanners.incrementAndGet();
@@ -216,6 +244,25 @@ public class ScannerOrchestrator {
             return abstr.getCachedConfig();
         }
         return null;
+    }
+
+    private static boolean isSafeChangedPath(String filePath) {
+        if (filePath == null || filePath.isBlank()) {
+            return false;
+        }
+        String normalized = filePath.replace('\\', '/');
+        if (normalized.startsWith("/")
+                || normalized.equals("..")
+                || normalized.contains("../")
+                || normalized.startsWith("-")) {
+            return false;
+        }
+        for (int i = 0; i < normalized.length(); i++) {
+            if (Character.isISOControl(normalized.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String normalizeLanguage(String lang) {

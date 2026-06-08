@@ -52,7 +52,7 @@ watch(projectId, () => {
 </script>
 
 <template>
-  <div class="project-detail-page" v-loading="loading">
+  <div v-loading="loading" class="project-detail-page">
     <el-page-header :icon="ArrowLeft" @back="goBack">
       <template #content>
         <span class="project-detail-page__title">{{ project?.name ?? '项目详情' }}</span>
@@ -67,8 +67,12 @@ watch(projectId, () => {
           <el-descriptions-item label="语言">{{ project.language }}</el-descriptions-item>
           <el-descriptions-item label="默认分支">{{ project.defaultBranch }}</el-descriptions-item>
           <el-descriptions-item label="成员数">{{ project.memberCount }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatDateTime(project.createdAt) }}</el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">{{ project.description || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{
+            formatDateTime(project.createdAt)
+          }}</el-descriptions-item>
+          <el-descriptions-item label="描述" :span="2">{{
+            project.description || '-'
+          }}</el-descriptions-item>
         </el-descriptions>
       </el-tab-pane>
 

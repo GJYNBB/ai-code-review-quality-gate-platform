@@ -2,6 +2,8 @@ package com.acrqg.platform.infra.health;
 
 import com.acrqg.platform.admin.domain.ModelConfig;
 import com.acrqg.platform.admin.repository.ModelConfigMapper;
+import com.acrqg.platform.infra.net.GuardedRestClientFactory;
+import com.acrqg.platform.infra.net.OutboundUrlGuard;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import jakarta.annotation.PostConstruct;
 import java.net.URI;
@@ -13,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.health.Status;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -133,7 +134,8 @@ public class AiServiceHealthIndicator implements HealthIndicator {
                 latest.set(ProbeSnapshot.unknown("no enabled model_config"));
                 return;
             }
-            String url = stripTrailingSlash(model.getBaseUrl());
+            String url = stripTrailingSlash(OutboundUrlGuard.requireHttpsPublicUrl(
+                    model.getBaseUrl(), "AI model baseUrl").toString());
             // 用 GET 请求 / 根路径，HEAD 在很多 LLM 网关上不被支持。
             // 任何 2xx / 3xx / 4xx 都视为"服务可达"；5xx 与网络异常视为不可用。
             try {
@@ -181,10 +183,9 @@ public class AiServiceHealthIndicator implements HealthIndicator {
     }
 
     private static RestClient buildClient() {
-        SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
-        rf.setConnectTimeout(Duration.ofMillis(PROBE_CONNECT_MILLIS));
-        rf.setReadTimeout(Duration.ofMillis(PROBE_READ_MILLIS));
-        return RestClient.builder().requestFactory(rf).build();
+        return GuardedRestClientFactory.build(
+                Duration.ofMillis(PROBE_CONNECT_MILLIS),
+                Duration.ofMillis(PROBE_READ_MILLIS));
     }
 
     private static String stripTrailingSlash(String url) {

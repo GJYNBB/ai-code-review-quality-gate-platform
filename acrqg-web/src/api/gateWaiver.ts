@@ -1,9 +1,5 @@
 import { request } from '@/api/http'
-import type {
-    GateWaiverApproveRequest,
-    GateWaiverDTO,
-    GateWaiverSubmitRequest,
-} from '@/types/api'
+import type { GateWaiverApproveRequest, GateWaiverDTO, GateWaiverSubmitRequest } from '@/types/api'
 
 /**
  * 门禁豁免 API（design §8.7）。
@@ -15,43 +11,43 @@ import type {
 
 /** POST /review-tasks/{taskId}/waivers */
 export function apply(taskId: number, req: GateWaiverSubmitRequest): Promise<GateWaiverDTO> {
-    return request<GateWaiverDTO>({
-        method: 'POST',
-        url: `/review-tasks/${taskId}/waivers`,
-        data: req,
-    })
+  return request<GateWaiverDTO>({
+    method: 'POST',
+    url: `/review-tasks/${taskId}/waivers`,
+    data: req,
+  })
 }
 
 /** POST /waivers/{id}/approval { approve: true } */
 export function approve(
-    id: number,
-    req: Omit<GateWaiverApproveRequest, 'approve'> = {},
+  id: number,
+  req: Omit<GateWaiverApproveRequest, 'approve'> = {},
 ): Promise<void> {
-    return request<void>({
-        method: 'POST',
-        url: `/waivers/${id}/approval`,
-        data: { approve: true, ...req },
-    })
+  return request<void>({
+    method: 'POST',
+    url: `/waivers/${id}/approval`,
+    data: { approve: true, ...req },
+  })
 }
 
 /** POST /waivers/{id}/approval { approve: false } */
 export function reject(
-    id: number,
-    req: Omit<GateWaiverApproveRequest, 'approve'> = {},
+  id: number,
+  req: Omit<GateWaiverApproveRequest, 'approve'> = {},
 ): Promise<void> {
-    return request<void>({
-        method: 'POST',
-        url: `/waivers/${id}/approval`,
-        data: { approve: false, ...req },
-    })
+  return request<void>({
+    method: 'POST',
+    url: `/waivers/${id}/approval`,
+    data: { approve: false, ...req },
+  })
 }
 
 /** GET /waivers/{id} */
 export function get(id: number): Promise<GateWaiverDTO> {
-    return request<GateWaiverDTO>({
-        method: 'GET',
-        url: `/waivers/${id}`,
-    })
+  return request<GateWaiverDTO>({
+    method: 'GET',
+    url: `/waivers/${id}`,
+  })
 }
 
 /**
@@ -63,20 +59,20 @@ export function get(id: number): Promise<GateWaiverDTO> {
  * 任务粒度过滤后即可生效。
  */
 export function listByTask(taskId: number): Promise<GateWaiverDTO[]> {
-    return request<GateWaiverDTO[]>({
-        method: 'GET',
-        url: `/review-tasks/${taskId}/waivers`,
-    })
+  return request<GateWaiverDTO[]>({
+    method: 'GET',
+    url: `/review-tasks/${taskId}/waivers`,
+  })
 }
 
 /** GET /projects/{projectId}/waivers?status=PENDING&page=&pageSize= */
 export function pageByProject(
-    projectId: number,
-    params: { status?: string; page?: number; pageSize?: number } = {},
+  projectId: number,
+  params: { status?: string; page?: number; pageSize?: number } = {},
 ): Promise<GateWaiverDTO[]> {
-    return request<GateWaiverDTO[]>({
-        method: 'GET',
-        url: `/projects/${projectId}/waivers`,
-        params,
-    })
+  return request<GateWaiverDTO[]>({
+    method: 'GET',
+    url: `/projects/${projectId}/waivers`,
+    params,
+  })
 }

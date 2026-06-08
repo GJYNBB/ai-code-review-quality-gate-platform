@@ -61,6 +61,9 @@ function resolveApiBaseUrl(): string {
 export const http: AxiosInstance = axios.create({
   baseURL: resolveApiBaseUrl(),
   timeout: 30_000,
+  withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
   // 我们自行处理 ApiResponse 包装，不让 axios 在 2xx 之外抛错
   validateStatus: (status) => status >= 200 && status < 600,
 })
@@ -87,29 +90,30 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig & ExtendedRequ
 // ----------------- refresh 单飞机制 -----------------
 let refreshingPromise: Promise<string> | null = null
 
+async function ensureCsrfToken(): Promise<void> {
+  await http.get('/auth/csrf', {
+    skipAuth: true,
+    skipErrorMessage: true,
+  } as ExtendedRequestConfig)
+}
+
 async function refreshAccessToken(): Promise<string> {
   if (refreshingPromise) return refreshingPromise
   const auth = useAuthStore()
   auth.hydrate()
-  const refreshToken = auth.refreshToken
-  if (!refreshToken) {
-    throw new ApiBusinessError({
-      code: 'AUTH_INVALID_TOKEN',
-      message: ERROR_MESSAGES.AUTH_INVALID_TOKEN,
-    })
-  }
 
-  refreshingPromise = http
-    .post<ApiResponse<RefreshResultDTO>>('/auth/refresh', { refreshToken }, {
-      skipAuth: true,
-      skipErrorMessage: true,
-    } as ExtendedRequestConfig)
+  refreshingPromise = ensureCsrfToken()
+    .then(() =>
+      http.post<ApiResponse<RefreshResultDTO>>('/auth/refresh', undefined, {
+        skipAuth: true,
+        skipErrorMessage: true,
+      } as ExtendedRequestConfig),
+    )
     .then((data) => {
       // 响应拦截器已解包：返回的 data 即 RefreshResultDTO
       const result = data as unknown as RefreshResultDTO
       auth.setTokens({
         accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
         expiresIn: result.expiresIn,
       })
       return result.accessToken

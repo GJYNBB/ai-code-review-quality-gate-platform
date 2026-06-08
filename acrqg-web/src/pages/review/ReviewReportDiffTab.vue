@@ -32,7 +32,7 @@ watch(() => props.taskId, load)
 </script>
 
 <template>
-  <div class="diff-tab" v-loading="loading">
+  <div v-loading="loading" class="diff-tab">
     <el-empty v-if="!diff || (diff.files?.length ?? 0) === 0" description="暂无差异数据" />
     <template v-else>
       <p class="diff-tab__summary">

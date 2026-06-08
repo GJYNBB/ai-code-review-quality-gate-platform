@@ -27,11 +27,12 @@
 - **B5-A.9** UI-007 评审报告 `ReviewReportPage.vue` 4 Tab（概览 / 问题 / 差异 / 日志）+ 通用 `DiffViewer.vue` 组件；顶部按角色 / 状态条件展示 重试 / 取消 / 申请豁免 按钮；申请豁免对话框 reason ≥ 10 字符 + expireAt 必须为未来时间的前端校验 (R9.4, R9.6, R15, R16)
 - **B5-A.10** UI-008 问题详情抽屉 `IssueDetailDrawer.vue`：状态机合法目标过滤（前端常量 `ALLOWED_ISSUE_EDGES` 与后端 `IssueStateMachine.ALLOWED_ISSUE_EDGES` 完全一致）；FALSE_POSITIVE / CLOSED 切换强制 comment.trim().length ≥ 5；评论 + 历史时间线倒序展示 (R17.1 ~ R17.6)
 - **B5-A.11** 通知中心 `NotificationListPage.vue`：read/type 筛选 + 一键已读 + 按 type 跳转评审报告（TASK_FINISHED → 报告页；WAIVER_REQUEST → 报告页 #waiver） (R19)
-- **B5-A.12** 系统管理 5 页面（仅 SYSTEM_ADMIN）：`UserManagePage`（创建 + 启用/禁用） / `ModelConfigPage`（API Key 掩码 + 编辑） / `ScannerConfigPage`（command 占位符 {workdir} {file}） / `SystemParamPage`（敏感参数 ****） / `AuditLogPage`（detail JSON 折叠） (R3, R21, R22, R23.3)
+- **B5-A.12** 系统管理 5 页面（仅 SYSTEM_ADMIN）：`UserManagePage`（创建 + 启用/禁用） / `ModelConfigPage`（API Key 掩码 + 编辑） / `ScannerConfigPage`（command 占位符 {workdir} {file}） / `SystemParamPage`（敏感参数 \*\*\*\*） / `AuditLogPage`（detail JSON 折叠） (R3, R21, R22, R23.3)
 - **B5-A.13** 门禁豁免审批：`WaiverApprovalDialog.vue` + 在 `ReviewReportPage` 概览 Tab 嵌入豁免列表；PROJECT_ADMIN / REVIEWER / SYSTEM_ADMIN 可对 PENDING 条目 approve/reject（拒绝审批自己提交的申请） (R15.4, R15.5)
 - **B5-A.16** 本 CHANGELOG 与 [docs/frontend.md](../docs/frontend.md)（状态切片 + 组件契约）
 
 ### Notes
+
 - **B5-A.15（前端 Vitest 测试）** 标记为 optional，本批次未交付，由后续独立任务派发。
 - **依赖安装时机**：本批次未在工作流中执行 `npm install`，由 GitHub Actions `frontend-build` job 在 PR 合并时执行 `npm ci`。
 - **TypeScript 5.9 警告**：`@typescript-eslint/typescript-estree` 提示当前 TS 版本超出官方支持范围（>=4.7.4 <5.6.0），仅为兼容性警告，不影响 lint 与构建。
@@ -41,6 +42,7 @@
 > 前端基础设施 Bootstrap 批次（git 分支 `chore/web-bootstrap`，Integration Node IT-1）。完成 7 项交付，为 B5-A 业务页面落地与后端联调提供完整的脚手架、HTTP 拦截器、布局、状态、路由与容器化运行时。
 
 ### Added
+
 - **B0-B.1** Vue 3 + Vite + TypeScript 项目骨架：`package.json`（锁定 `vue@^3.4` / `vite@^5` / `typescript@^5.4`，并安装 `element-plus`、`@element-plus/icons-vue`、`pinia`、`vue-router@4`、`axios`、`dayjs`、`echarts`、`vue-echarts` 与 `vitest` / `@vue/test-utils` / `jsdom` / `eslint` / `prettier` 等开发依赖）；`vite.config.ts`（alias `@/` → `src/`、`/api` 代理至 `http://localhost:8080`、生产分块、Vitest jsdom 环境）；`tsconfig.json` + `tsconfig.app.json` + `tsconfig.node.json` 双 reference；`index.html`、`env.d.ts`、`.eslintrc.cjs`、`.prettierrc.json`、`.editorconfig`、`.gitignore`、`.npmrc`；`src/main.ts`、`src/App.vue`；通用类型 `src/types/api.d.ts` 与工具 `src/utils/{format,permission,uuid}.ts` (R23.6)
 - **B0-B.2** axios HTTP 客户端：`src/api/http.ts` 拦截器（注入 `Authorization: Bearer <accessToken>` 与 `X-Request-Id`、解包 `code === 0`、`AUTH_INVALID_TOKEN` 单飞 refresh + 一次重放、refresh 失败回退 `/login`）；`src/api/errorCodes.ts` 完整 15 条错误码中文映射（覆盖 design §8.2 全部条目，`SUCCESS` 不入映射） (R1.4, R1.5, R23.3)
 - **B0-B.3** 布局体系：`DefaultLayout.vue`（header 含项目切换器占位 / 用户菜单 / 未读通知红点 + 按角色过滤的左侧菜单 + 路由出口）；`BlankLayout.vue`（公开页居中卡片）；`src/styles/index.scss` 全局基础样式与 Element Plus 设计令牌 (R2)
@@ -50,6 +52,7 @@
 - **B0-B.8** 文档：本 `CHANGELOG.md` 与 `README.md`（开发命令、环境变量、目录结构、与后端契约、容器化指南、后续批次预告）
 
 ### Notes
+
 - **依赖安装时机**：本批次未在工作流中执行 `npm install`，由 GitHub Actions `frontend-build` job（B0-A.12 已注册）在 PR 合并时执行 `npm ci`。本地开发首次进入需手动 `npm install`。
 - **B0-B.7（可选 Vitest 骨架测试）** 在本批次未交付，由后续独立任务派发（按 tasks.md 标注的 `*` 可选规则）。
 - **业务 API 客户端**（`src/api/auth.ts` / `src/api/project.ts` 等）暂未创建，将随对应业务模块在 B5-A 批次按需补充；当前 `src/api/http.ts` 已提供 `request<T>(config)` 通用入口与 `ApiBusinessError` 异常类型，可被后续业务客户端复用。

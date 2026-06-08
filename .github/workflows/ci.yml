@@ -132,6 +132,10 @@ jobs:
         if: steps.check_fe.outputs.exists == 'true'
         run: npm ci
 
+      - name: Check formatting
+        if: steps.check_fe.outputs.exists == 'true'
+        run: npm run format:check --if-present
+
       - name: Lint
         if: steps.check_fe.outputs.exists == 'true'
         run: npm run lint --if-present

@@ -140,6 +140,11 @@ app:
       secret: ${JWT_SECRET}
       access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:7200}
       refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:604800}
+    refresh-cookie:
+      name: ${REFRESH_COOKIE_NAME:ACRQG_REFRESH}
+      path: ${REFRESH_COOKIE_PATH:/api/v1/auth}
+      secure: ${REFRESH_COOKIE_SECURE:true}
+      same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}
     # AES-GCM 派生主密钥 (R5.3 / R21.1 / R23.2)。必须通过 TOKEN_ENCRYPTION_KEY 环境变量注入。
     token-encryption-key: ${TOKEN_ENCRYPTION_KEY}
 
@@ -148,6 +153,18 @@ app:
       # 单 JVM 内 Redis Stream 消费者线程数 (R21.4 / R24.3)；范围 1..32，
       # 实际校验在 B1-D 系统参数模块完成；这里仅提供启动期初值。
       concurrency: ${REVIEW_WORKER_CONCURRENCY:4}
+
+  worker:
+    pel-recovery:
+      enabled: ${WORKER_PEL_RECOVERY_ENABLED:true}
+      initial-delay-ms: ${WORKER_PEL_RECOVERY_INITIAL_DELAY_MS:45000}
+      fixed-delay-ms: ${WORKER_PEL_RECOVERY_FIXED_DELAY_MS:60000}
+      min-idle-ms: ${WORKER_PEL_RECOVERY_MIN_IDLE_MS:300000}
+      batch-size: ${WORKER_PEL_RECOVERY_BATCH_SIZE:50}
+      max-claim-count: ${WORKER_PEL_RECOVERY_MAX_CLAIM_COUNT:200}
+
+  scanner:
+    workspace-root: ${SCANNER_WORKSPACE_ROOT:${java.io.tmpdir}/acrqg-scanner-workspaces}
 
   ai:
     review:
