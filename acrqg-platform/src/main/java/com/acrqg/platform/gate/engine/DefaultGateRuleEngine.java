@@ -49,7 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>状态聚合：任一 BLOCKER 规则失败 → {@link GateResultStatus#FAILED}；否则
  * {@link GateResultStatus#PASSED}（含 WARN 失败的情况）；无任何 enabled 规则时
- * 同样按 PASSED + score=100，并写一条 WARN 级 task_log（提示项目尚未配置门禁）。
+ * 按 fail-closed 处理为 FAILED + score=0，并写一条 WARN 级 task_log（提示项目尚未配置门禁）。
  *
  * <p>持久化：{@link GateResultMapper#upsertByTaskId} 使用 PostgreSQL ON CONFLICT
  * 兼容 retry 场景；写完后再同步 {@code review_task.ai_risk_score / ai_available}。
@@ -190,16 +190,17 @@ public class DefaultGateRuleEngine implements GateRuleEngine {
         }
 
         // 3) 状态聚合
-        GateResultStatus status = aggregateStatus(evals);
-        if (enabledRules.isEmpty()) {
-            // 无规则：警告并按 PASSED + score=100 处理
+        boolean noEnabledRules = enabledRules.isEmpty();
+        GateResultStatus status = noEnabledRules ? GateResultStatus.FAILED : aggregateStatus(evals);
+        if (noEnabledRules) {
+            // 无规则：fail-closed，避免未配置质量门禁时误判通过
             taskLogger.warn(taskId, STAGE,
                     "no enabled gate rules for project " + projectId
-                            + "; default to PASSED with score=100");
+                            + "; default to FAILED with score=0");
         }
 
         // 4) score
-        int score = computeScore(evals);
+        int score = noEnabledRules ? SCORE_MIN : computeScore(evals);
 
         // 5) summary 序列化
         GateResultSummary summary = buildSummary(evals, metricValues, aiAvailable);

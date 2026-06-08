@@ -40,10 +40,10 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  *
  * <h3>原始 body 处理</h3>
- * <p>{@link RequestBody String rawBody} 让 Spring 把请求体作为 UTF-8 字符串注入。
+ * <p>{@link RequestBody byte[] rawBody} 让 Spring 把请求体作为原始字节注入。
  * GitHub 在计算 HMAC-SHA256 时使用客户端发送的字节序列，因此 Spring 不得对 body
- * 做任何 deserialize / serialize；本控制器声明 {@code consumes = "*/*"}，
- * 让 {@code StringHttpMessageConverter} 直接读取原始字节并以 UTF-8 解码。
+ * 做任何 deserialize / serialize；本控制器通过 {@link MediaType#ALL_VALUE} 接收任意
+ * content-type，并把原始字节交给签名校验器。
  *
  * <h3>错误处理</h3>
  * <p>所有 {@link BusinessException} 由 {@code GlobalExceptionHandler} 统一映射为

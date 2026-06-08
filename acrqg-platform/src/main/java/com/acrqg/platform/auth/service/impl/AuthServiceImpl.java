@@ -191,8 +191,11 @@ public class AuthServiceImpl implements AuthService {
         // 计算剩余 TTL；非正值由 JwtBlacklist.add 自动抬升为 5 分钟下限
         Duration remaining = computeRemaining(exp);
         blacklist.add(userId, jti, remaining);
-        tokenTracker.untrackAccess(userId, jti);
         String revokedRefreshJti = revokeRefreshIfPresent(userId, refreshToken);
+        if (revokedRefreshJti == null) {
+            revokedRefreshJti = revokeRefreshBoundToAccess(userId, jti);
+        }
+        tokenTracker.untrackAccess(userId, jti);
 
         publishAudit(userId, username, ACTION_LOGOUT, RESOURCE_USER,
                 String.valueOf(userId),
@@ -225,6 +228,15 @@ public class AuthServiceImpl implements AuthService {
             return null;
         }
         String refreshJti = tokenProvider.extractJti(refreshClaims);
+        if (refreshJti == null || refreshJti.isBlank()) {
+            return null;
+        }
+        tokenTracker.rotateRefresh(userId, refreshJti, null);
+        return refreshJti;
+    }
+
+    private String revokeRefreshBoundToAccess(long userId, String accessJti) {
+        String refreshJti = tokenTracker.refreshJtiForAccess(accessJti);
         if (refreshJti == null || refreshJti.isBlank()) {
             return null;
         }
@@ -275,7 +287,7 @@ public class AuthServiceImpl implements AuthService {
         String newRefreshJti = tokenProvider.extractJti(newRefreshClaims);
 
         tokenTracker.rotateRefresh(userId, oldRefreshJti, newRefreshJti);
-        tokenTracker.trackAccess(userId, newAccessJti);
+        tokenTracker.trackAccess(userId, newAccessJti, newRefreshJti);
 
         publishAudit(userId, user.getUsername(), ACTION_REFRESHED, RESOURCE_USER,
                 String.valueOf(userId),

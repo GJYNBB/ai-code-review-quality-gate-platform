@@ -3,16 +3,12 @@ package com.acrqg.platform.scanner.adapter;
 import com.acrqg.platform.admin.domain.ScannerConfig;
 import com.acrqg.platform.admin.repository.ScannerConfigMapper;
 import com.acrqg.platform.code_issue.domain.CodeIssue;
-import com.acrqg.platform.common.util.JsonUtils;
 import com.acrqg.platform.diff.domain.DiffFile;
-import com.acrqg.platform.diff.domain.DiffHunk;
-import com.acrqg.platform.diff.domain.DiffLine;
 import com.acrqg.platform.scanner.parser.ScanResultParser;
 import com.acrqg.platform.scanner.parser.ScanResultParserRegistry;
 import com.acrqg.platform.scanner.process.ScannerOutput;
 import com.acrqg.platform.scanner.process.ScannerProcessException;
 import com.acrqg.platform.scanner.process.ScannerProcessRunner;
-import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -100,9 +96,8 @@ public abstract class AbstractStaticScanner implements StaticScannerAdapter {
         Path tempDir = null;
         try {
             if (workdir == null) {
-                tempDir = Files.createTempDirectory("acrqg-scan-" + name() + "-");
-                workdir = tempDir;
-                materializeChangedFiles(workdir, ctx.changedFiles());
+                throw new ScannerProcessException(
+                        "scanner requires a real checked-out source workdir; fragment-only diff input is not safe: " + name());
             }
             ScannerOutput output = processRunner.run(cfg, workdir, files);
             ScanResultParser parser = parserRegistry.get(cfg.getResultParserType());
@@ -120,9 +115,6 @@ public abstract class AbstractStaticScanner implements StaticScannerAdapter {
                 issue.setTaskId(ctx.taskId());
             }
             return issues;
-        } catch (IOException ex) {
-            throw new ScannerProcessException(
-                    "create temp workdir failed for " + name() + ": " + ex.getMessage(), ex);
         } finally {
             if (tempDir != null) {
                 deleteSilently(tempDir);
@@ -143,71 +135,12 @@ public abstract class AbstractStaticScanner implements StaticScannerAdapter {
     protected List<String> applicableFiles(ScanContext ctx) {
         return ctx.changedFiles().stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getOversized()))
+                .filter(f -> !"DELETED".equalsIgnoreCase(f.getChangeType()))
                 .map(DiffFile::getFilePath)
                 .filter(java.util.Objects::nonNull)
                 .filter(this::fileMatches)
                 .sorted(Comparator.naturalOrder())
                 .collect(Collectors.toUnmodifiableList());
-    }
-
-    /**
-     * 在尚未接入完整 git checkout 的情况下，至少把变更文件路径安全地物化到临时目录，
-     * 避免 scanner 因 file not found 整体不可用。真正的生产级扫描仍应在隔离 checkout
-     * 或短生命周期容器中运行完整源码树。
-     */
-    private static void materializeChangedFiles(Path workdir, List<DiffFile> changedFiles) throws IOException {
-        if (changedFiles == null) {
-            return;
-        }
-        for (DiffFile f : changedFiles) {
-            if (f == null || "DELETED".equals(f.getChangeType())) {
-                continue;
-            }
-            String filePath = f.getFilePath();
-            if (filePath == null || filePath.isBlank()) {
-                continue;
-            }
-            Path target = safeResolve(workdir, filePath);
-            Files.createDirectories(target.getParent());
-            if (!Files.exists(target)) {
-                Files.writeString(target, reconstructChangedFile(f));
-            }
-        }
-    }
-
-    private static String reconstructChangedFile(DiffFile file) {
-        if (file.getHunksJson() == null || file.getHunksJson().isBlank()) {
-            throw new ScannerProcessException(
-                    "cannot materialize changed file without hunks: " + file.getFilePath());
-        }
-        List<DiffHunk> hunks = JsonUtils.fromJson(file.getHunksJson(), new TypeReference<List<DiffHunk>>() {
-        });
-        StringBuilder out = new StringBuilder();
-        for (DiffHunk hunk : hunks) {
-            for (DiffLine line : hunk.lines()) {
-                if (line.type() == DiffLine.Type.DEL || line.type() == DiffLine.Type.HEADER) {
-                    continue;
-                }
-                out.append(line.content() == null ? "" : line.content()).append('\n');
-            }
-        }
-        if (out.length() == 0) {
-            throw new ScannerProcessException(
-                    "cannot materialize changed file from empty hunks: " + file.getFilePath());
-        }
-        return out.toString();
-    }
-
-    private static Path safeResolve(Path root, String relativePath) {
-        String normalized = relativePath.replace('\\', '/');
-        if (normalized.startsWith("/") || normalized.contains("../") || normalized.equals("..")) {
-            throw new ScannerProcessException("unsafe changed file path: " + relativePath);
-        }
-        Path resolved = root.resolve(normalized).normalize();
-        if (!resolved.startsWith(root.normalize())) {
-            throw new ScannerProcessException("changed file escapes workdir: " + relativePath);
-        }
-        return resolved;
     }
 
     /** 子类按扩展名过滤文件；默认全部接受（Semgrep）。 */

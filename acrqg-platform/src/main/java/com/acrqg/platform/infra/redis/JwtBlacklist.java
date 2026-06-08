@@ -45,7 +45,7 @@ public class JwtBlacklist {
     private static final Logger log = LoggerFactory.getLogger(JwtBlacklist.class);
 
     /** 每个被拉黑 jti 的最小 TTL（设计 §3.2：5 分钟窗口）。 */
-    static final Duration MIN_TTL = Duration.ofMinutes(5);
+    public static final Duration MIN_TTL = Duration.ofMinutes(5);
 
     /** 用户 set 在 add 时的额外缓冲（避免边界回收）。 */
     private static final Duration USER_SET_GRACE = Duration.ofSeconds(60);
@@ -72,7 +72,7 @@ public class JwtBlacklist {
             log.warn("JwtBlacklist.add called with blank jti, userId={}", userId);
             return;
         }
-        Duration effective = (ttl == null || !ttl.isPositive()) ? MIN_TTL : ttl;
+        Duration effective = (ttl == null || ttl.isZero() || ttl.isNegative()) ? MIN_TTL : ttl;
 
         String jtiKey = jtiKey(jti);
         String userKey = userKey(userId);

@@ -20,8 +20,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>{@link GateResultStatus#FAILED} → 阶段返回 {@link ReviewTaskStatus#FAILED_GATE}；</li>
  *   <li>{@link GateResultStatus#PASSED} → 阶段返回 {@link ReviewTaskStatus#PASSED}；</li>
- *   <li>其他（{@code PENDING} / {@code WAIVED}）→ 视为非预期，转 PASSED 并写 WARN
- *       级 task_log（{@code WAIVED} 由 B4-E 单独驱动，不应在 B3-F 路径出现）。</li>
+ *   <li>其他（{@code PENDING} / {@code WAIVED}）→ 视为非预期，按 fail-closed 转
+ *       {@link ReviewTaskStatus#FAILED_GATE} 并写 WARN 级 task_log。</li>
  * </ul>
  *
  * <p>同时把 {@link GateResultDTO#score()} 写回 {@code review_task.score} 字段，
@@ -98,8 +98,8 @@ public class GateEvaluatingStage implements TaskStage {
             case PASSED -> ReviewTaskStatus.PASSED;
             case PENDING, WAIVED -> {
                 taskLogger.warn(taskId, stage().name(),
-                        "unexpected gate result status=" + s + ", default to PASSED");
-                yield ReviewTaskStatus.PASSED;
+                        "unexpected gate result status=" + s + ", default to FAILED_GATE");
+                yield ReviewTaskStatus.FAILED_GATE;
             }
         };
 
@@ -116,13 +116,13 @@ public class GateEvaluatingStage implements TaskStage {
     }
 
     private static GateResultStatus parseGateResultStatus(String s) {
-        if (s == null) {
-            return GateResultStatus.PASSED;
+        if (s == null || s.isBlank()) {
+            throw new IllegalStateException("gate result status is blank");
         }
         try {
             return GateResultStatus.valueOf(s);
         } catch (IllegalArgumentException ex) {
-            return GateResultStatus.PASSED;
+            throw new IllegalStateException("unknown gate result status: " + s, ex);
         }
     }
 }

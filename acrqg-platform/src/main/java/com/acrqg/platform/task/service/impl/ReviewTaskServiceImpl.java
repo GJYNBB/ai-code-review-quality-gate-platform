@@ -164,16 +164,23 @@ public class ReviewTaskServiceImpl implements com.acrqg.platform.task.service.Re
             }
         }
 
-        // 1) Idempotency-Key 命中：直接返回上一次的任务
+        // 1) Idempotency-Key 命中：直接返回上一次的任务。
+        // 手动 / CI_CD 幂等 key 必须按 userId + projectId 隔离，避免跨项目复用同一 header
+        // 值时命中其他项目的缓存 taskId。Webhook 幂等由 WebhookService 使用 webhookKey 处理。
         String idemFullKey = null;
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            idemFullKey = IdempotencyStore.taskKey(idempotencyKey);
+            if (trigger == TriggerType.WEBHOOK) {
+                idemFullKey = IdempotencyStore.taskKey(idempotencyKey);
+            } else {
+                idemFullKey = IdempotencyStore.taskKey(caller.id(), projectId, idempotencyKey);
+            }
             Optional<String> cached = idempotencyStore.get(idemFullKey);
             if (cached.isPresent() && !cached.get().isBlank()) {
                 Long cachedTaskId = parseLongSafely(cached.get());
                 if (cachedTaskId != null) {
                     ReviewTask hit = reviewTaskMapper.selectById(cachedTaskId);
                     if (hit != null) {
+                        ensureCachedTaskVisible(hit, projectId, caller, trigger);
                         log.debug("create idempotency hit: key={} taskId={}", idemFullKey, cachedTaskId);
                         return toDTO(hit);
                     }
@@ -564,6 +571,22 @@ public class ReviewTaskServiceImpl implements com.acrqg.platform.task.service.Re
         if (!permissionEvaluator.isProjectMember(caller.id(), projectId)) {
             throw new BusinessException(ErrorCode.PERMISSION_DENIED,
                     ErrorCode.PERMISSION_DENIED.getMessage());
+        }
+    }
+
+    private void ensureCachedTaskVisible(ReviewTask hit,
+                                         Long requestProjectId,
+                                         AuthenticatedUser caller,
+                                         TriggerType trigger) {
+        if (hit.getProjectId() == null || !hit.getProjectId().equals(requestProjectId)) {
+            throw new BusinessException(ErrorCode.TASK_DUPLICATED,
+                    "Idempotency-Key 已被其他请求使用");
+        }
+        if (trigger != TriggerType.WEBHOOK) {
+            if (caller == null || !permissionEvaluator.isProjectMember(caller.id(), hit.getProjectId())) {
+                throw new BusinessException(ErrorCode.PERMISSION_DENIED,
+                        ErrorCode.PERMISSION_DENIED.getMessage());
+            }
         }
     }
 

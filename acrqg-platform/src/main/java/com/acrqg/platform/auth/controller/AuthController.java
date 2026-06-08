@@ -60,8 +60,8 @@ public class AuthController {
     }
 
     @Operation(summary = "登出当前会话",
-            description = "把当前 access token 的 jti 加入 Redis 黑名单，并在请求体提供 refreshToken 时撤销 refresh。"
-                    + "需携带有效 access token；refreshToken 缺失时按旧客户端兼容路径仅撤销 access。")
+            description = "把当前 access token 的 jti 加入 Redis 黑名单，并撤销服务端绑定的 refresh token。"
+                    + "请求体 refreshToken 作为旧客户端兼容兜底；需携带有效 access token。")
     @PostMapping("/logout")
     public ApiResponse<Void> logout(HttpServletRequest request,
                                     @RequestBody(required = false) RefreshRequest logoutRequest) {

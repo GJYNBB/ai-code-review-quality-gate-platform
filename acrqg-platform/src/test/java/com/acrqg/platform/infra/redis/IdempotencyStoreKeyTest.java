@@ -35,17 +35,22 @@ class IdempotencyStoreKeyTest {
     }
 
     @Test
-    @DisplayName("taskKey 仅包装 idempotencyKey")
+    @DisplayName("taskKey 按 userId/projectId/idempotencyKey 隔离")
     void taskKeyHappyPath() {
-        assertThat(IdempotencyStore.taskKey("abc-001")).isEqualTo("idem:task:abc-001");
+        assertThat(IdempotencyStore.taskKey(7L, 42L, "abc-001"))
+                .isEqualTo("idem:task:7:42:abc-001");
     }
 
     @Test
-    @DisplayName("taskKey 拒绝空白 idempotencyKey")
+    @DisplayName("taskKey 拒绝空白 idempotencyKey 和空 user/project")
     void taskKeyRejectsBlank() {
-        assertThatThrownBy(() -> IdempotencyStore.taskKey(null))
+        assertThatThrownBy(() -> IdempotencyStore.taskKey(null, 42L, "abc"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> IdempotencyStore.taskKey("   "))
+        assertThatThrownBy(() -> IdempotencyStore.taskKey(7L, null, "abc"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> IdempotencyStore.taskKey(7L, 42L, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> IdempotencyStore.taskKey(7L, 42L, "   "))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

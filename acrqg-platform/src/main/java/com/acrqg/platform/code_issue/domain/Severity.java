@@ -17,9 +17,30 @@ package com.acrqg.platform.code_issue.domain;
  * <p>Covers: R11.3。
  */
 public enum Severity {
-    CRITICAL,
-    HIGH,
-    MEDIUM,
-    LOW,
-    INFO;
+    CRITICAL(100),
+    HIGH(80),
+    MEDIUM(50),
+    LOW(20),
+    INFO(5);
+
+    private final int weight;
+
+    Severity(int weight) {
+        this.weight = weight;
+    }
+
+    public int weight() {
+        return weight;
+    }
+
+    public static Severity from(String value) {
+        if (value == null || value.isBlank()) {
+            return INFO;
+        }
+        try {
+            return Severity.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return INFO;
+        }
+    }
 }

@@ -50,11 +50,16 @@ export interface ExtendedRequestConfig<D = unknown> extends AxiosRequestConfig<D
   _retried?: boolean
 }
 
+function resolveApiBaseUrl(): string {
+  const configured = String(import.meta.env.VITE_API_BASE_URL || '').trim()
+  if (!configured) return '/api/v1'
+  const trimmed = configured.replace(/\/+$/, '')
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`
+}
+
 /** axios 实例：基础地址默认 '/api/v1'，由 vite 代理或 nginx 反代到后端 */
 export const http: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL
-    ? `${import.meta.env.VITE_API_BASE_URL}/api/v1`
-    : '/api/v1',
+  baseURL: resolveApiBaseUrl(),
   timeout: 30_000,
   // 我们自行处理 ApiResponse 包装，不让 axios 在 2xx 之外抛错
   validateStatus: (status) => status >= 200 && status < 600,
