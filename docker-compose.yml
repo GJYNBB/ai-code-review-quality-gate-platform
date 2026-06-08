@@ -27,11 +27,9 @@ services:
     environment:
       POSTGRES_DB: quality_gate
       POSTGRES_USER: ${DB_USER:-acrqg}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-acrqg-dev-password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
       TZ: Asia/Shanghai
       PGTZ: Asia/Shanghai
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -50,13 +48,13 @@ services:
     image: redis:7-alpine
     container_name: acrqg-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -79,13 +77,14 @@ services:
       SPRING_PROFILES_ACTIVE: prod,api
       DB_URL: jdbc:postgresql://postgres:5432/quality_gate
       DB_USER: ${DB_USER:-acrqg}
-      DB_PASSWORD: ${DB_PASSWORD:-acrqg-dev-password}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
       REDIS_URL: redis://redis:6379/0
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
       AI_REVIEW_BASE_URL: ${AI_REVIEW_BASE_URL:-}
       AI_REVIEW_TIMEOUT_SECONDS: ${AI_REVIEW_TIMEOUT_SECONDS:-60}
       WEBHOOK_SIGNATURE_HEADER: ${WEBHOOK_SIGNATURE_HEADER:-X-Hub-Signature-256}
-      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-dev-change-me-32-bytes-token-encryption-key!!}
-      JWT_SECRET: ${JWT_SECRET:-please-change-me-32-bytes-minimum-secret-key-for-jwt-hmac-signing}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?set TOKEN_ENCRYPTION_KEY in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-7200}
       JWT_REFRESH_TTL_SECONDS: ${JWT_REFRESH_TTL_SECONDS:-604800}
     depends_on:
@@ -93,8 +92,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8080:8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health || exit 1"]
       interval: 15s
@@ -119,13 +116,14 @@ services:
       SPRING_PROFILES_ACTIVE: prod,worker
       DB_URL: jdbc:postgresql://postgres:5432/quality_gate
       DB_USER: ${DB_USER:-acrqg}
-      DB_PASSWORD: ${DB_PASSWORD:-acrqg-dev-password}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
       REDIS_URL: redis://redis:6379/0
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
       AI_REVIEW_BASE_URL: ${AI_REVIEW_BASE_URL:-}
       AI_REVIEW_TIMEOUT_SECONDS: ${AI_REVIEW_TIMEOUT_SECONDS:-60}
       REVIEW_WORKER_CONCURRENCY: ${REVIEW_WORKER_CONCURRENCY:-4}
-      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-dev-change-me-32-bytes-token-encryption-key!!}
-      JWT_SECRET: ${JWT_SECRET:-please-change-me-32-bytes-minimum-secret-key-for-jwt-hmac-signing}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?set TOKEN_ENCRYPTION_KEY in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,7 +147,10 @@ services:
   #   - B0-B 合并 develop 后将 build context 切换到 ./acrqg-web。
   # ---------------------------------------------------------------------------
   frontend:
-    image: nginx:1.25-alpine
+    build:
+      context: ./acrqg-web
+      dockerfile: Dockerfile
+    image: acrqg/frontend:0.1.0-SNAPSHOT
     container_name: acrqg-frontend
     restart: unless-stopped
     ports:

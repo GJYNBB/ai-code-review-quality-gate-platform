@@ -45,6 +45,7 @@
 
         <!-- Plugin versions -->
         <jacoco.version>0.8.12</jacoco.version>
+        <jacoco.haltOnFailure>true</jacoco.haltOnFailure>
 
         <!-- Test-only deps (B6-A.3 / B6-A.5 / B6-A.7 / B6-A.9 / B6-A.10) -->
         <testcontainers.version>1.20.4</testcontainers.version>
@@ -59,6 +60,11 @@
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
 
@@ -135,6 +141,10 @@
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -295,7 +305,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <haltOnFailure>true</haltOnFailure>
+                            <haltOnFailure>${jacoco.haltOnFailure}</haltOnFailure>
                             <excludes>
                                 <exclude>com/acrqg/platform/infra/log/MaskingLogbackEncoder.class</exclude>
                                 <exclude>com/acrqg/platform/AcrqgApplication.class</exclude>

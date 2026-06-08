@@ -1,6 +1,7 @@
 package com.acrqg.platform.webhook.verifier;
 
 import com.acrqg.platform.repository.domain.Provider;
+import java.nio.charset.StandardCharsets;
 import org.springframework.http.HttpHeaders;
 
 /**
@@ -40,6 +41,14 @@ public interface SignatureVerifier {
      * @return 当且仅当头部存在且签名一致时返回 {@code true}；其他情况返回 {@code false}
      */
     boolean verify(String secret, String body, HttpHeaders headers);
+
+    /**
+     * 基于原始请求字节校验签名。GitHub 必须覆盖本方法；GitLab/Gitee 的共享 token
+     * 校验与 body 无关，默认 UTF-8 解码兼容旧实现即可。
+     */
+    default boolean verify(String secret, byte[] body, HttpHeaders headers) {
+        return verify(secret, body == null ? null : new String(body, StandardCharsets.UTF_8), headers);
+    }
 
     /**
      * 该实现负责的代码托管平台。{@link SignatureVerifierFactory} 在

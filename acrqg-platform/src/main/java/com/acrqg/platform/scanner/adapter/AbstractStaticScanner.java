@@ -96,8 +96,8 @@ public abstract class AbstractStaticScanner implements StaticScannerAdapter {
         Path tempDir = null;
         try {
             if (workdir == null) {
-                tempDir = Files.createTempDirectory("acrqg-scan-" + name() + "-");
-                workdir = tempDir;
+                throw new ScannerProcessException(
+                        "scanner requires a real checked-out source workdir; fragment-only diff input is not safe: " + name());
             }
             ScannerOutput output = processRunner.run(cfg, workdir, files);
             ScanResultParser parser = parserRegistry.get(cfg.getResultParserType());
@@ -115,9 +115,6 @@ public abstract class AbstractStaticScanner implements StaticScannerAdapter {
                 issue.setTaskId(ctx.taskId());
             }
             return issues;
-        } catch (IOException ex) {
-            throw new ScannerProcessException(
-                    "create temp workdir failed for " + name() + ": " + ex.getMessage(), ex);
         } finally {
             if (tempDir != null) {
                 deleteSilently(tempDir);
@@ -138,6 +135,7 @@ public abstract class AbstractStaticScanner implements StaticScannerAdapter {
     protected List<String> applicableFiles(ScanContext ctx) {
         return ctx.changedFiles().stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getOversized()))
+                .filter(f -> !"DELETED".equalsIgnoreCase(f.getChangeType()))
                 .map(DiffFile::getFilePath)
                 .filter(java.util.Objects::nonNull)
                 .filter(this::fileMatches)

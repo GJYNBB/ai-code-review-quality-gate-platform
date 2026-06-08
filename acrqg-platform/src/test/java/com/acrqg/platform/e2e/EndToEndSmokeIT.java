@@ -84,8 +84,7 @@ class EndToEndSmokeIT extends PostgresRedisTestBase {
     @BeforeAll
     static void startWireMock() {
         wireMock = new WireMockServer(WireMockConfiguration.options()
-                .dynamicPort()
-                .extensions());
+                .dynamicPort());
         wireMock.start();
     }
 
@@ -346,6 +345,6 @@ class EndToEndSmokeIT extends PostgresRedisTestBase {
     /** 暴露给手动调试的 helper：dump WireMock 收到的所有请求。 */
     @SuppressWarnings("unused")
     static List<LoggedRequest> wireMockReceivedRequests(String urlRegex) {
-        return wireMock.findAll(WireMock.post(urlPathMatching(urlRegex)).build());
+        return wireMock.findAll(WireMock.postRequestedFor(urlPathMatching(urlRegex)));
     }
 }

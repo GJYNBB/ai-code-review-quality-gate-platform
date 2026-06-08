@@ -51,6 +51,11 @@ public class GithubSignatureVerifier implements SignatureVerifier {
 
     @Override
     public boolean verify(String secret, String body, HttpHeaders headers) {
+        return verify(secret, body == null ? null : body.getBytes(StandardCharsets.UTF_8), headers);
+    }
+
+    @Override
+    public boolean verify(String secret, byte[] body, HttpHeaders headers) {
         if (secret == null || body == null || headers == null) {
             return false;
         }
@@ -61,7 +66,7 @@ public class GithubSignatureVerifier implements SignatureVerifier {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA_256);
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA_256));
-            byte[] digest = mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
+            byte[] digest = mac.doFinal(body);
             String expected = PREFIX + HexFormat.of().formatHex(digest);
             return MessageDigest.isEqual(
                     expected.getBytes(StandardCharsets.UTF_8),

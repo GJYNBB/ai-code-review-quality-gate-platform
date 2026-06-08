@@ -60,11 +60,13 @@ public class AuthController {
     }
 
     @Operation(summary = "登出当前会话",
-            description = "把当前 access token 的 jti 加入 Redis 黑名单（TTL = 剩余有效期，下限 5 分钟）。"
-                    + "需携带有效 access token；无效 / 过期 token 不会被识别。")
+            description = "把当前 access token 的 jti 加入 Redis 黑名单，并撤销服务端绑定的 refresh token。"
+                    + "请求体 refreshToken 作为旧客户端兼容兜底；需携带有效 access token。")
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(HttpServletRequest request) {
-        authService.logout(extractAccessToken(request));
+    public ApiResponse<Void> logout(HttpServletRequest request,
+                                    @RequestBody(required = false) RefreshRequest logoutRequest) {
+        String refreshToken = logoutRequest == null ? null : logoutRequest.refreshToken();
+        authService.logout(extractAccessToken(request), refreshToken);
         return ApiResponse.success(null);
     }
 

@@ -146,7 +146,7 @@ public class AuthServiceImpl implements AuthService {
     // ---------------------------------------------------------------------
 
     @Override
-    public void logout(String accessToken) {
+    public void logout(String accessToken, String refreshToken) {
         // 优先从当前线程取 jti / userId（已经过 JwtAuthFilter 校验）
         Optional<AuthenticatedUser> opt = CurrentUserHolder.optional();
 
@@ -191,11 +191,57 @@ public class AuthServiceImpl implements AuthService {
         // 计算剩余 TTL；非正值由 JwtBlacklist.add 自动抬升为 5 分钟下限
         Duration remaining = computeRemaining(exp);
         blacklist.add(userId, jti, remaining);
+        String revokedRefreshJti = revokeRefreshIfPresent(userId, refreshToken);
+        if (revokedRefreshJti == null) {
+            revokedRefreshJti = revokeRefreshBoundToAccess(userId, jti);
+        }
         tokenTracker.untrackAccess(userId, jti);
 
         publishAudit(userId, username, ACTION_LOGOUT, RESOURCE_USER,
                 String.valueOf(userId),
-                detailOf("jti", jti));
+                detailOf("jti", jti, "refreshJti", revokedRefreshJti));
+    }
+
+    /**
+     * 撤销当前会话 refresh token。logout 是幂等接口：refresh token 缺失、无效、类型不匹配、
+     * 不属于当前用户时均静默忽略，避免把"登出"变成新的 token 探测通道。
+     *
+     * @return 成功撤销的 refresh jti；未撤销时返回 {@code null}
+     */
+    private String revokeRefreshIfPresent(long userId, String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return null;
+        }
+        Claims refreshClaims = tokenProvider.tryParse(refreshToken).orElse(null);
+        if (refreshClaims == null) {
+            log.debug("logout refresh revoke skipped: invalid refresh token");
+            return null;
+        }
+        if (!JwtTokenProvider.TOKEN_TYPE_REFRESH.equals(tokenProvider.extractTokenType(refreshClaims))) {
+            log.debug("logout refresh revoke skipped: tokenType is not REFRESH");
+            return null;
+        }
+        long refreshUserId = tokenProvider.extractUserId(refreshClaims);
+        if (refreshUserId != userId) {
+            log.warn("logout refresh revoke skipped: refresh userId mismatch, current={} tokenUser={}",
+                    userId, refreshUserId);
+            return null;
+        }
+        String refreshJti = tokenProvider.extractJti(refreshClaims);
+        if (refreshJti == null || refreshJti.isBlank()) {
+            return null;
+        }
+        tokenTracker.rotateRefresh(userId, refreshJti, null);
+        return refreshJti;
+    }
+
+    private String revokeRefreshBoundToAccess(long userId, String accessJti) {
+        String refreshJti = tokenTracker.refreshJtiForAccess(accessJti);
+        if (refreshJti == null || refreshJti.isBlank()) {
+            return null;
+        }
+        tokenTracker.rotateRefresh(userId, refreshJti, null);
+        return refreshJti;
     }
 
     // ---------------------------------------------------------------------
@@ -241,7 +287,7 @@ public class AuthServiceImpl implements AuthService {
         String newRefreshJti = tokenProvider.extractJti(newRefreshClaims);
 
         tokenTracker.rotateRefresh(userId, oldRefreshJti, newRefreshJti);
-        tokenTracker.trackAccess(userId, newAccessJti);
+        tokenTracker.trackAccess(userId, newAccessJti, newRefreshJti);
 
         publishAudit(userId, user.getUsername(), ACTION_REFRESHED, RESOURCE_USER,
                 String.valueOf(userId),

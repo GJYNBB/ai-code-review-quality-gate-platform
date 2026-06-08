@@ -5,10 +5,11 @@ import com.acrqg.platform.admin.service.AdminService;
 import com.acrqg.platform.task.service.impl.ReviewTaskServiceImpl;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,12 +18,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.core.StreamOperations;
-import org.springframework.data.redis.core.StreamReadOptions;
+import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
@@ -120,12 +122,13 @@ public class ReviewTaskConsumer {
         this.workerExecutor = new ThreadPoolExecutor(
                 concurrency, concurrency,
                 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(),
+                new ArrayBlockingQueue<>(queueCapacity(concurrency)),
                 r -> {
                     Thread t = new Thread(r, "review-task-worker");
                     t.setDaemon(false);
                     return t;
-                });
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy());
 
         // 3) 订阅 param-changed 通道
         registerParamChangedSubscription(concurrency);
@@ -213,7 +216,10 @@ public class ReviewTaskConsumer {
 
     private void processRecord(MapRecord<String, Object, Object> record) {
         String recordId = record.getId() == null ? null : record.getId().getValue();
-        Long taskId = parseTaskId(record.getValue());
+        Map<Object, Object> fields = record.getValue();
+        Long taskId = parseTaskId(fields);
+        boolean attemptPresent = fields != null && fields.containsKey("attempt");
+        Integer attempt = parseAttempt(fields);
         if (taskId == null) {
             log.warn("processRecord: invalid taskId in record, skipping. recordId={} fields={}",
                     recordId, record.getValue());
@@ -221,8 +227,20 @@ public class ReviewTaskConsumer {
             ackQuietly(recordId);
             return;
         }
+        if (attemptPresent && attempt == null) {
+            log.warn("processRecord: invalid attempt in record, skipping. recordId={} taskId={} fields={}",
+                    recordId, taskId, fields);
+            // 现有消息均应携带正整数 attempt；格式错误的消息直接 ACK，避免反复毒化 PEL。
+            ackQuietly(recordId);
+            return;
+        }
         try {
-            taskOrchestrator.run(taskId);
+            if (attempt == null) {
+                // 兼容旧 Stream 消息：历史消息没有 attempt 字段时仍按 DB 当前 attempt 运行。
+                taskOrchestrator.run(taskId);
+            } else {
+                taskOrchestrator.run(taskId, attempt);
+            }
             ackQuietly(recordId);
         } catch (RuntimeException ex) {
             // 不 ACK：留在 PEL，等待 XCLAIM 或人工干预
@@ -258,17 +276,44 @@ public class ReviewTaskConsumer {
         }
     }
 
+    private static Integer parseAttempt(Map<Object, Object> fields) {
+        if (fields == null) {
+            return null;
+        }
+        Object v = fields.get("attempt");
+        if (v == null) {
+            return null;
+        }
+        try {
+            int parsed = Integer.parseInt(String.valueOf(v).trim());
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static int queueCapacity(int concurrency) {
+        return Math.max(concurrency * 4, XREAD_COUNT);
+    }
+
+    private static byte[] bytes(String value) {
+        return value.getBytes(StandardCharsets.UTF_8);
+    }
+
     // =====================================================================
     // consumer group 初始化
     // =====================================================================
 
     private void ensureConsumerGroup() {
         try {
-            stringRedisTemplate.opsForStream().createGroup(
-                    ReviewTaskServiceImpl.STREAM_KEY,
-                    ReadOffset.from("0"),
-                    CONSUMER_GROUP);
-            log.info("created consumer group {} on stream {}",
+            stringRedisTemplate.execute((RedisCallback<Object>) connection -> connection.execute(
+                    "XGROUP",
+                    bytes("CREATE"),
+                    bytes(ReviewTaskServiceImpl.STREAM_KEY),
+                    bytes(CONSUMER_GROUP),
+                    bytes("0"),
+                    bytes("MKSTREAM")));
+            log.info("created consumer group {} on stream {} with MKSTREAM",
                     CONSUMER_GROUP, ReviewTaskServiceImpl.STREAM_KEY);
         } catch (RuntimeException ex) {
             String msg = ex.getMessage() == null ? ex.toString() : ex.getMessage();

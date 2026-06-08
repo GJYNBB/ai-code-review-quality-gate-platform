@@ -52,6 +52,18 @@ public interface RepositoryBindingMapper extends BaseMapper<RepositoryBinding> {
             + " ORDER BY id ASC LIMIT 1")
     RepositoryBinding selectByRepoUrl(@Param("repoUrl") String repoUrl);
 
+    /** 按 provider + repo_url 查询启用中的绑定，供公开 webhook 入口使用。 */
+    @Select("SELECT id, project_id, provider, repo_url, "
+            + "       access_token_encrypted, webhook_secret_encrypted, "
+            + "       webhook_url, status, last_checked_at, created_at, updated_at "
+            + "  FROM repository_binding "
+            + " WHERE provider = #{provider} "
+            + "   AND repo_url = #{repoUrl} "
+            + "   AND status = 'ACTIVE' "
+            + " ORDER BY id ASC LIMIT 1")
+    RepositoryBinding selectActiveByProviderAndRepoUrl(@Param("provider") String provider,
+                                                       @Param("repoUrl") String repoUrl);
+
     /**
      * 仅刷新 {@code last_checked_at}（不修改其他字段）。
      *

@@ -84,6 +84,55 @@ public interface ProjectMapper extends BaseMapper<Project> {
             """)
     long countByKeyword(@Param("keyword") String keyword);
 
+    /** 普通用户仅能分页查看自己参与的项目。 */
+    @Select("""
+            <script>
+            SELECT p.id, p.name, p.description, p.default_branch, p.language,
+                   p.created_by, p.created_at, p.updated_at,
+                   (SELECT COUNT(1) FROM project_member m2 WHERE m2.project_id = p.id) AS member_count
+              FROM project p
+              JOIN project_member pm ON pm.project_id = p.id
+             WHERE pm.user_id = #{userId}
+              <if test='keyword != null and keyword != ""'>
+                AND (p.name ILIKE CONCAT('%', #{keyword}, '%')
+                  OR COALESCE(p.description,'') ILIKE CONCAT('%', #{keyword}, '%'))
+              </if>
+             ORDER BY p.id DESC
+             LIMIT #{limit} OFFSET #{offset}
+            </script>
+            """)
+    @Results(id = "projectVisibleListRowMap", value = {
+            @Result(column = "id", property = "id"),
+            @Result(column = "name", property = "name"),
+            @Result(column = "description", property = "description"),
+            @Result(column = "default_branch", property = "defaultBranch"),
+            @Result(column = "language", property = "language"),
+            @Result(column = "created_by", property = "createdBy"),
+            @Result(column = "created_at", property = "createdAt"),
+            @Result(column = "updated_at", property = "updatedAt"),
+            @Result(column = "member_count", property = "memberCount")
+    })
+    List<ProjectListRow> pageVisibleList(@Param("userId") Long userId,
+                                         @Param("keyword") String keyword,
+                                         @Param("limit") int limit,
+                                         @Param("offset") int offset);
+
+    /** 普通用户可见项目计数。 */
+    @Select("""
+            <script>
+            SELECT COUNT(1)
+              FROM project p
+              JOIN project_member pm ON pm.project_id = p.id
+             WHERE pm.user_id = #{userId}
+              <if test='keyword != null and keyword != ""'>
+                AND (p.name ILIKE CONCAT('%', #{keyword}, '%')
+                  OR COALESCE(p.description,'') ILIKE CONCAT('%', #{keyword}, '%'))
+              </if>
+            </script>
+            """)
+    long countVisibleByKeyword(@Param("userId") Long userId,
+                               @Param("keyword") String keyword);
+
     /**
      * 主键单行查询，附带 memberCount。
      *

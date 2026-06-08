@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  *   <li>R7.4 Webhook 幂等：{@code (provider, repositoryId, eventId)} 三元组在 24 小时内
  *       重复到达时只创建一次任务，参见 {@link #webhookKey(String, String, String)}。</li>
  *   <li>R8.4 手动接口幂等：请求头 {@code Idempotency-Key} 在 24 小时内重复使用时
- *       直接返回上一次结果，参见 {@link #taskKey(String)}。</li>
+ *       直接返回上一次结果，参见 {@link #taskKey(Long, Long, String)}。</li>
  * </ul>
  *
  * <p>语义说明：
@@ -100,6 +100,17 @@ public class IdempotencyStore {
         return Optional.ofNullable(v);
     }
 
+    /**
+     * 覆盖写入已有幂等结果并设置 TTL。该操作是单条 Redis SET，不存在 delete+set 间隙。
+     */
+    public void put(String key, String value, Duration ttl) {
+        validateKey(key);
+        if (ttl == null || ttl.isZero() || ttl.isNegative()) {
+            throw new IllegalArgumentException("ttl must be a positive Duration");
+        }
+        stringRedisTemplate.opsForValue().set(key, value == null ? "" : value, ttl);
+    }
+
     /** 删除占位（调试 / 回滚场景）。 */
     public void delete(String key) {
         validateKey(key);
@@ -137,10 +148,29 @@ public class IdempotencyStore {
     }
 
     /**
-     * 手动任务幂等键：{@code idem:task:{idempotencyKey}}。
+     * 手动任务幂等键：{@code idem:task:{userId}:{projectId}:{idempotencyKey}}。
      *
-     * <p>{@code idempotencyKey} 来自请求头 {@code Idempotency-Key}（R8.4）。
+     * <p>{@code idempotencyKey} 来自请求头 {@code Idempotency-Key}（R8.4）。把调用方与项目
+     * 纳入 namespace，避免不同项目 / 不同用户复用同一 header 值时命中彼此的缓存结果。
      */
+    public static String taskKey(Long userId, Long projectId, String idempotencyKey) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        if (projectId == null) {
+            throw new IllegalArgumentException("projectId must not be null");
+        }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("idempotencyKey must not be null or blank");
+        }
+        return "idem:task:" + userId + ":" + projectId + ":" + idempotencyKey;
+    }
+
+    /**
+     * 旧版手动任务幂等键，仅供兼容历史 webhook / Redis key 测试；新代码应优先使用
+     * {@link #taskKey(Long, Long, String)}。
+     */
+    @Deprecated(forRemoval = false)
     public static String taskKey(String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("idempotencyKey must not be null or blank");

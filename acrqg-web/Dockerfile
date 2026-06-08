@@ -18,17 +18,12 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY .npmrc ./
 
-# 若存在 lockfile 优先使用 npm ci 以保证可重复构建；否则回退到 npm install
-RUN if [ -f package-lock.json ]; then \
-      npm ci --no-audit --no-fund; \
-    else \
-      npm install --no-audit --no-fund; \
-    fi
+# 必须使用 lockfile 构建，保证依赖可重复且与 CI 的 npm ci 行为一致
+RUN npm ci --no-audit --no-fund
 
 # 复制源码并构建
 COPY tsconfig*.json vite.config.ts env.d.ts index.html ./
 COPY src ./src
-COPY public ./public
 RUN npm run build
 
 # -------- Stage 2: Runtime --------

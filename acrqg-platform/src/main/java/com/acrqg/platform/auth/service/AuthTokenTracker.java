@@ -34,6 +34,8 @@ import org.springframework.stereotype.Component;
  *       <td>该用户已签发但尚未失效的 refresh jti 集合</td></tr>
  *   <tr><td>{@code auth:rt:{refreshJti}}</td><td>String</td>
  *       <td>refresh jti → userId 反向索引；存在即视为有效</td></tr>
+ *   <tr><td>{@code auth:session:at:{accessJti}}</td><td>String</td>
+ *       <td>access jti → 当前会话 refresh jti，用于无请求体 logout 撤销 refresh</td></tr>
  * </table>
  *
  * <p>Set 的 TTL 始终取 {@code max(currentTtl, refreshTtl + 60s)}，保证最长存活的
@@ -53,6 +55,7 @@ public class AuthTokenTracker {
     static final String JTIS_KEY_PREFIX = "auth:user:jtis:";
     static final String RTS_KEY_PREFIX  = "auth:user:rts:";
     static final String RT_KEY_PREFIX   = "auth:rt:";
+    static final String ACCESS_REFRESH_KEY_PREFIX = "auth:session:at:";
 
     private final StringRedisTemplate redis;
     private final JwtTokenProvider tokenProvider;
@@ -93,6 +96,7 @@ public class AuthTokenTracker {
         redis.opsForSet().add(rtsKey(userId), refreshJti);
         refreshExpire(rtsKey(userId), setTtlSec);
         redis.opsForValue().set(rtKey(refreshJti), String.valueOf(userId), Duration.ofSeconds(refreshTtl));
+        bindAccessToRefresh(accessJti, refreshJti);
     }
 
     /**
@@ -102,12 +106,20 @@ public class AuthTokenTracker {
      * @param accessJti   新 access token jti
      */
     public void trackAccess(long userId, String accessJti) {
+        trackAccess(userId, accessJti, null);
+    }
+
+    /**
+     * 跟踪 access jti，并可选绑定当前会话 refresh jti，供 logout 服务端撤销 refresh。
+     */
+    public void trackAccess(long userId, String accessJti, String refreshJti) {
         if (accessJti == null || accessJti.isBlank()) {
             return;
         }
         long ttlSec = tokenProvider.getRefreshTtlSeconds() + GRACE.toSeconds();
         redis.opsForSet().add(jtisKey(userId), accessJti);
         refreshExpire(jtisKey(userId), ttlSec);
+        bindAccessToRefresh(accessJti, refreshJti);
     }
 
     /**
@@ -121,6 +133,7 @@ public class AuthTokenTracker {
             redis.opsForSet().remove(rtsKey(userId), oldRefreshJti);
         }
         if (newRefreshJti == null || newRefreshJti.isBlank()) {
+            rebindAccessRefresh(userId, oldRefreshJti, null);
             return;
         }
         long refreshTtl = tokenProvider.getRefreshTtlSeconds();
@@ -128,6 +141,7 @@ public class AuthTokenTracker {
         redis.opsForSet().add(rtsKey(userId), newRefreshJti);
         refreshExpire(rtsKey(userId), setTtlSec);
         redis.opsForValue().set(rtKey(newRefreshJti), String.valueOf(userId), Duration.ofSeconds(refreshTtl));
+        rebindAccessRefresh(userId, oldRefreshJti, newRefreshJti);
     }
 
     /**
@@ -157,6 +171,17 @@ public class AuthTokenTracker {
             return;
         }
         redis.opsForSet().remove(jtisKey(userId), accessJti);
+        redis.delete(accessRefreshKey(accessJti));
+    }
+
+    /**
+     * 根据 access jti 查询同一会话当前 refresh jti。用于 logout 无请求体时服务端撤销 refresh。
+     */
+    public String refreshJtiForAccess(String accessJti) {
+        if (accessJti == null || accessJti.isBlank()) {
+            return null;
+        }
+        return redis.opsForValue().get(accessRefreshKey(accessJti));
     }
 
     /**
@@ -182,6 +207,14 @@ public class AuthTokenTracker {
                     if (Boolean.TRUE.equals(ok)) {
                         rtRemoved++;
                     }
+                }
+            }
+        }
+        Set<String> accessJtis = redis.opsForSet().members(jtisKey(userId));
+        if (accessJtis != null) {
+            for (String accessJti : accessJtis) {
+                if (accessJti != null && !accessJti.isBlank()) {
+                    redis.delete(accessRefreshKey(accessJti));
                 }
             }
         }
@@ -222,6 +255,35 @@ public class AuthTokenTracker {
         }
     }
 
+    private void rebindAccessRefresh(long userId, String oldRefreshJti, String newRefreshJti) {
+        if (oldRefreshJti == null || oldRefreshJti.isBlank()) {
+            return;
+        }
+        Set<String> accessJtis = redis.opsForSet().members(jtisKey(userId));
+        if (accessJtis == null || accessJtis.isEmpty()) {
+            return;
+        }
+        for (String accessJti : accessJtis) {
+            if (accessJti == null || accessJti.isBlank()) {
+                continue;
+            }
+            String key = accessRefreshKey(accessJti);
+            String bound = redis.opsForValue().get(key);
+            if (!oldRefreshJti.equals(bound)) {
+                continue;
+            }
+            if (newRefreshJti == null || newRefreshJti.isBlank()) {
+                redis.delete(key);
+                continue;
+            }
+            Long ttlSeconds = redis.getExpire(key);
+            long effectiveTtl = ttlSeconds == null || ttlSeconds <= 0
+                    ? tokenProvider.getAccessTtlSeconds() + GRACE.toSeconds()
+                    : ttlSeconds;
+            redis.opsForValue().set(key, newRefreshJti, Duration.ofSeconds(effectiveTtl));
+        }
+    }
+
     static String jtisKey(long userId) {
         return JTIS_KEY_PREFIX + userId;
     }
@@ -232,5 +294,19 @@ public class AuthTokenTracker {
 
     static String rtKey(String refreshJti) {
         return RT_KEY_PREFIX + refreshJti;
+    }
+
+    static String accessRefreshKey(String accessJti) {
+        return ACCESS_REFRESH_KEY_PREFIX + accessJti;
+    }
+
+    private void bindAccessToRefresh(String accessJti, String refreshJti) {
+        if (accessJti == null || accessJti.isBlank()
+                || refreshJti == null || refreshJti.isBlank()) {
+            return;
+        }
+        long accessTtl = tokenProvider.getAccessTtlSeconds();
+        redis.opsForValue().set(accessRefreshKey(accessJti), refreshJti,
+                Duration.ofSeconds(accessTtl + GRACE.toSeconds()));
     }
 }

@@ -18,6 +18,7 @@ import com.acrqg.platform.common.api.ErrorCode;
 import com.acrqg.platform.common.exception.BusinessException;
 import com.acrqg.platform.common.util.MaskUtils;
 import com.acrqg.platform.infra.crypto.TokenEncryptor;
+import com.acrqg.platform.infra.net.OutboundUrlGuard;
 import com.acrqg.platform.infra.security.AuthenticatedUser;
 import com.acrqg.platform.infra.security.CurrentUserHolder;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -124,7 +125,7 @@ public class AdminServiceImpl implements AdminService {
 
         ModelConfig entity = new ModelConfig();
         entity.setName(request.name());
-        entity.setBaseUrl(request.baseUrl());
+        entity.setBaseUrl(validateOutboundBaseUrl(request.baseUrl()));
         entity.setApiKeyEncrypted(tokenEncryptor.encrypt(request.apiKey()));
         entity.setTimeoutSeconds(request.timeoutSeconds());
         entity.setEnabled(Boolean.TRUE);
@@ -177,8 +178,9 @@ public class AdminServiceImpl implements AdminService {
         boolean changed = false;
 
         if (request.baseUrl() != null && !request.baseUrl().equals(existing.getBaseUrl())) {
-            diff.put("baseUrl", existing.getBaseUrl() + " -> " + request.baseUrl());
-            existing.setBaseUrl(request.baseUrl());
+            String safeBaseUrl = validateOutboundBaseUrl(request.baseUrl());
+            diff.put("baseUrl", existing.getBaseUrl() + " -> " + safeBaseUrl);
+            existing.setBaseUrl(safeBaseUrl);
             changed = true;
         }
         if (request.apiKey() != null && !request.apiKey().isEmpty()) {
@@ -245,6 +247,14 @@ public class AdminServiceImpl implements AdminService {
             log.error("decryptModelApiKey failed: modelId={} err={}", modelId, ex.toString());
             throw new BusinessException(ErrorCode.INTERNAL_ERROR,
                     "模型 apiKey 解密失败，请联系系统管理员", ex);
+        }
+    }
+
+    private static String validateOutboundBaseUrl(String baseUrl) {
+        try {
+            return OutboundUrlGuard.requireHttpsPublicUrl(baseUrl, "AI model baseUrl").toString();
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, ex.getMessage(), ex);
         }
     }
 

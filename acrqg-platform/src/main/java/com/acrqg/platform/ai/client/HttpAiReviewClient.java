@@ -4,6 +4,7 @@ import com.acrqg.platform.ai.exception.AiServiceUnavailableException;
 import com.acrqg.platform.ai.schema.AiReviewSchemaValidator;
 import com.acrqg.platform.common.api.ErrorCode;
 import com.acrqg.platform.common.exception.BusinessException;
+import com.acrqg.platform.infra.net.OutboundUrlGuard;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.SocketTimeoutException;
@@ -92,7 +93,14 @@ public class HttpAiReviewClient implements AiReviewClient {
         }
 
         RestClient client = buildClient(req.timeoutSeconds());
-        String url = stripTrailingSlash(req.baseUrl()) + "/v1/chat/completions";
+        String baseUrl;
+        try {
+            baseUrl = stripTrailingSlash(OutboundUrlGuard.requireHttpsPublicUrl(
+                    req.baseUrl(), "AI model baseUrl").toString());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, ex.getMessage(), ex);
+        }
+        String url = baseUrl + "/v1/chat/completions";
         Map<String, Object> body = buildBody(req);
 
         String responseText;

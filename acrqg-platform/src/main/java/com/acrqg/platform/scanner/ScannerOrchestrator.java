@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -114,10 +115,25 @@ public class ScannerOrchestrator {
                     "no applicable scanner: language=" + language + " adapters=" + adapters.size());
             return 0;
         }
+        if (!sourceCheckoutAvailable()) {
+            taskLogger.warn(taskId, STAGE,
+                    "static scanners skipped: source checkout materialization is not configured");
+            log.warn("ScannerOrchestrator: skipped {} scanners for taskId={} because source checkout materialization is not configured",
+                    selected.size(), taskId);
+            return 0;
+        }
 
+        AtomicInteger succeededScanners = new AtomicInteger(0);
+        AtomicInteger failedScanners = new AtomicInteger(0);
         List<CodeIssue> all = selected.parallelStream()
-                .flatMap(adapter -> safeScan(taskId, adapter, task, applicable))
+                .flatMap(adapter -> safeScan(taskId, adapter, task, applicable,
+                        succeededScanners, failedScanners))
                 .collect(Collectors.toList());
+
+        if (succeededScanners.get() == 0 && failedScanners.get() > 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR,
+                    "all selected static scanners failed; check scanner installation and workdir configuration");
+        }
 
         if (all.isEmpty()) {
             taskLogger.info(taskId, STAGE,
@@ -135,6 +151,17 @@ public class ScannerOrchestrator {
                         + " scanners=" + selected.size()
                         + " files=" + applicable.size());
         return inserted;
+    }
+
+    /**
+     * 当前版本尚未实现安全的源码 checkout / materialization 服务。
+     *
+     * <p>静态扫描器只能在真实仓库工作区中运行；不能从 diff hunks 合成临时文件，否则会产生
+     * 误报/漏报并放大路径处理风险。在 checkout 服务落地前，发现可用扫描器时显式跳过，避免
+     * 已启用的旧 scanner_config 行把任务推进到全失败状态。
+     */
+    private boolean sourceCheckoutAvailable() {
+        return false;
     }
 
     /** 选择"语言匹配 OR Semgrep（通用安全）"且可用的适配器集合。 */
@@ -159,7 +186,9 @@ public class ScannerOrchestrator {
     private Stream<CodeIssue> safeScan(long taskId,
                                        StaticScannerAdapter adapter,
                                        ReviewTask task,
-                                       List<DiffFile> applicable) {
+                                       List<DiffFile> applicable,
+                                       AtomicInteger succeededScanners,
+                                       AtomicInteger failedScanners) {
         try {
             ScanContext ctx = new ScanContext(
                     taskId,
@@ -168,11 +197,13 @@ public class ScannerOrchestrator {
                     null, // workdir 由 AbstractStaticScanner 自行 mkdtemp
                     getCachedConfig(adapter));
             List<CodeIssue> issues = adapter.scan(ctx);
+            succeededScanners.incrementAndGet();
             if (issues == null || issues.isEmpty()) {
                 return Stream.empty();
             }
             return issues.stream();
         } catch (RuntimeException ex) {
+            failedScanners.incrementAndGet();
             String message = "scanner failed: " + adapter.name() + ", " + safeMsg(ex);
             log.warn("ScannerOrchestrator: {}", message, ex);
             taskLogger.warn(taskId, STAGE, message, ex);
